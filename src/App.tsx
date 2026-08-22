@@ -9,6 +9,7 @@ import { SignInForm } from '@/components/SignInForm'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { ActorChip } from '@/components/ActorChip'
 import { BottomNav } from '@/components/BottomNav'
+import { SideRail } from '@/components/SideRail'
 // HomePage loads eagerly — it's the first thing rendered on every cold
 // start, so lazy-loading it would only add a flicker on the most common
 // path. Every other route is code-split: the tablet never needs the cash,
@@ -96,6 +97,7 @@ function AuthedShell({ auth }: { auth: Extract<AuthState, { mode: 'managed' | 's
 
   return (
     <div className="app-shell">
+      <SideRail />
       <OfflineBanner />
       <header className="app-shell__header">
         <ActorChip />

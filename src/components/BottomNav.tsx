@@ -1,5 +1,8 @@
-// Bottom nav for thumb reach — tablet is wall-mounted (docs/01-ARCHITECTURE.md).
-// Kept to the handful of screens used every shift; everything else (equipment,
+// Bottom nav for phone-width viewports — thumb reach on a device held in
+// one hand (M9's own-phone self-service is the real phone use case). Above
+// the 768px breakpoint in index.css, SideRail replaces this for the station
+// tablet, which is reached with a whole arm, not a thumb. Kept to the
+// handful of screens used every shift; everything else (equipment,
 // templates, quarantine, tickets, the small logs) lives under "More"
 // (docs/07-M2-CHECKLISTS.md) rather than crowding a 10+ item bottom bar.
 import { NavLink } from 'react-router-dom'

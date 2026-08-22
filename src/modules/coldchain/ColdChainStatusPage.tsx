@@ -113,19 +113,19 @@ export function ColdChainStatusPage() {
       <h2>Cold chain status</h2>
 
       <div className="status-summary">
-        <div className="status-summary__tile">
+        <div className={`status-summary__tile ${excursions.length > 0 ? 'status-summary__tile--bad' : 'status-summary__tile--ok'}`}>
           <span className="status-summary__count">{excursions.length}</span>
           <span>open excursions</span>
         </div>
-        <div className="status-summary__tile">
+        <div className={`status-summary__tile ${openLots.length > 0 ? 'status-summary__tile--warn' : 'status-summary__tile--ok'}`}>
           <span className="status-summary__count">{openLots.length}</span>
           <span>open quarantine</span>
         </div>
-        <div className="status-summary__tile">
+        <div className={`status-summary__tile ${openTickets.length > 0 ? 'status-summary__tile--warn' : 'status-summary__tile--ok'}`}>
           <span className="status-summary__count">{openTickets.length}</span>
           <span>open tickets</span>
         </div>
-        <div className="status-summary__tile">
+        <div className={`status-summary__tile ${missedToday > 0 ? 'status-summary__tile--warn' : 'status-summary__tile--ok'}`}>
           <span className="status-summary__count">{missedToday}</span>
           <span>readings missed today</span>
         </div>
