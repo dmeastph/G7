@@ -1,0 +1,562 @@
+:root {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --accent: #0f766e;
+  --danger: #b91c1c;
+  --warn-bg: #fef3c7;
+  --warn-ink: #92400e;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.splash,
+.error-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* ---- sign-in ---- */
+.sign-in-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+}
+.sign-in-form {
+  background: var(--surface);
+  padding: 2rem;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(360px, 90vw);
+}
+.sign-in-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.sign-in-form input {
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+}
+.sign-in-form button {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+}
+.sign-in-form__error {
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+/* ---- app shell ---- */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 72px; /* clears the bottom nav */
+}
+.app-shell__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+}
+.app-shell__content {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+/* Route-split fallback (App.tsx Suspense) — brief on a good connection,
+   the point is not blocking the whole shell while one route's chunk loads. */
+.route-loading {
+  color: var(--muted);
+  padding: 1rem 0;
+}
+
+/* ---- offline banner ---- */
+.offline-banner {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.offline-banner--offline {
+  background: var(--danger);
+  color: white;
+}
+.offline-banner--syncing {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+/* ---- actor chip ---- */
+.actor-chip {
+  position: relative;
+  display: inline-block;
+}
+.actor-chip__button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+}
+.actor-chip__name {
+  font-weight: 600;
+}
+.actor-chip__switch {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.actor-chip__popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 200px;
+}
+.actor-chip__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+
+/* ---- pin pad ---- */
+.pin-pad {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 1.5rem;
+  width: min(320px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.pin-pad__dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.pin-pad__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+}
+.pin-pad__dot--filled {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.pin-pad__error {
+  color: var(--danger);
+  text-align: center;
+  margin: 0;
+}
+.pin-pad__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+.pin-pad__key {
+  padding: 1rem 0;
+  font-size: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.pin-pad__key:disabled {
+  visibility: hidden;
+}
+.pin-pad__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.pin-pad__cancel,
+.pin-pad__enter {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: none;
+}
+.pin-pad__cancel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.pin-pad__enter {
+  background: var(--accent);
+  color: white;
+}
+.pin-pad__enter:disabled {
+  opacity: 0.5;
+}
+
+/* ---- bottom nav ---- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+}
+.bottom-nav__item {
+  flex: 1;
+  text-align: center;
+  padding: 0.9rem 0;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.bottom-nav__item--active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---- cards ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+}
+.card h2 {
+  margin-top: 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+.card dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+.card dt {
+  color: var(--muted);
+}
+.card dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ---- param value ---- */
+.param-value--unset {
+  color: var(--warn-ink);
+  font-style: italic;
+}
+.param-value--loading {
+  color: var(--muted);
+}
+
+/* ---- params admin ---- */
+.params-admin table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.params-admin th,
+.params-admin td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.params-admin__signoff-badge {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+}
+
+/* ---- dialog ---- */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.dialog {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: min(420px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.dialog--wide {
+  width: min(640px, 95vw);
+}
+.template-item-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+.template-item-row input,
+.template-item-row select {
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.checklist-item-card h2 {
+  color: var(--ink);
+  font-size: 1rem;
+}
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.dialog input,
+.dialog select {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+}
+.dialog__warning {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  padding: 0.5rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin: 0;
+}
+.dialog__hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0;
+}
+.dialog__error {
+  color: var(--danger);
+  margin: 0;
+}
+.dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.dialog--alert {
+  border-top: 4px solid var(--danger);
+}
+.dialog__checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+.dialog__checkbox input {
+  width: auto;
+}
+.dialog__photo {
+  gap: 0.4rem;
+}
+
+/* ---- generic page furniture ---- */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.empty-state {
+  color: var(--muted);
+  font-style: italic;
+}
+.card table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+.card th,
+.card td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.card ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+/* ---- take readings ---- */
+.readings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+.reading-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+}
+.reading-tile__asset {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.reading-tile__zone,
+.reading-tile__last {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.reading-tile__status {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.reading-tile--due {
+  border-color: var(--border);
+}
+.reading-tile--overdue {
+  border-color: var(--warn-ink);
+  background: var(--warn-bg);
+}
+.reading-tile--missed {
+  border-color: var(--danger);
+}
+.reading-tile--missed .reading-tile__status {
+  color: var(--danger);
+}
+.reading-tile--done,
+.reading-tile--completed {
+  border-color: var(--accent);
+  opacity: 0.7;
+}
+.reading-tile--in_progress {
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
+.temp-display {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.5rem 0;
+}
+.temp-keypad {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* ---- excursion ---- */
+.excursion-page__setpoint-warning {
+  background: var(--danger);
+  color: white;
+  font-size: 1rem;
+}
+
+/* ---- status page ---- */
+.status-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+.status-summary__tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
+}
+.status-summary__count {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+.status-page__out-of-range {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* ---- roster coverage ---- */
+.coverage-tests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.coverage-pass,
+.coverage-fail {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.coverage-pass {
+  background: #dcfce7;
+  color: #166534;
+}
+.coverage-fail {
+  background: var(--warn-bg);
+  color: var(--danger);
+}

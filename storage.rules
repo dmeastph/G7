@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// Wired in M0, used starting M1 for photo evidence (temperature excursions,
+// incidents). Client compresses to <=1600px / JPEG q0.7 before upload —
+// see docs/01-ARCHITECTURE.md.
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Manuals and SOPs (M7) — a manager uploads from the back office with a
+    // connection, not from the shop floor offline, same category as roster
+    // or parameter changes (docs/01-ARCHITECTURE.md offline table). PDF
+    // only, larger cap than a compressed evidence photo. More specific
+    // than the generic branches/{branchId}/** match below, so this is the
+    // one that applies to anything under .../documents/.
+    match /branches/{branchId}/documents/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.token.branchId == branchId;
+      allow write: if request.auth != null
+                    && request.auth.token.branchId == branchId
+                    && (request.auth.token.role == 'store_manager'
+                        || request.auth.token.role == 'owner'
+                        || request.auth.token.role == 'ops_head')
+                    && request.resource.size < 10 * 1024 * 1024
+                    && request.resource.contentType == 'application/pdf';
+      allow delete: if false;
+    }
+    // Wired in M0, used starting M1 for photo evidence (temperature
+    // excursions, incidents). Client compresses to <=1600px / JPEG q0.7
+    // before upload — see docs/01-ARCHITECTURE.md.
+    match /branches/{branchId}/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.token.branchId == branchId;
+      allow write: if request.auth != null
+                    && request.auth.token.branchId == branchId
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow delete: if false;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

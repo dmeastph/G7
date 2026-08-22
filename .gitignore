@@ -1,0 +1,16 @@
+node_modules
+.tools
+dist
+dist-ssr
+functions/lib
+.env
+.env.local
+*.local
+.firebase
+.emulator-data
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.tsbuildinfo
+.vercel
+.DS_Store

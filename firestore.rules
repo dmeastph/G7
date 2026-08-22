@@ -1,0 +1,486 @@
+rules_version = '2';
+
+// Security boundary lives here, against Firebase Auth custom claims — not
+// against the staff PIN, which only stamps who acted (see docs/01-ARCHITECTURE.md).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function claims() { return request.auth.token; }
+    function signedIn() { return request.auth != null; }
+    function sameBranch(b) { return claims().branchId == b; }
+    function hasRole(r) { return claims().role == r; }
+    function isManager() { return hasRole('store_manager') || hasRole('owner') || hasRole('ops_head'); }
+    // Cash reveal/approval sits with the floor supervisor, not just the
+    // office (docs/09-M4-CASH-CONTROL.md) — narrower use than isManager()
+    // alone, wider than hasRole('shift_leader') alone.
+    function isSupervisor() { return hasRole('shift_leader') || isManager(); }
+    function isStation() { return hasRole('station'); }
+    function isOwner() { return hasRole('owner'); }
+    // "stock.release_quarantine" belongs to store_manager and owner only —
+    // narrower than isManager(), which also includes ops_head
+    // (docs/02-DATA-MODEL.md quarantineLots).
+    function canReleaseQuarantine() { return hasRole('store_manager') || hasRole('owner'); }
+
+    // ---- branches ----
+    match /branches/{branchId} {
+      allow read: if signedIn();
+      allow create, update: if isOwner();
+      allow delete: if false;
+    }
+
+    // ---- roles ----
+    match /roles/{roleCode} {
+      allow read: if signedIn();
+      allow create, update: if isOwner();
+      allow delete: if false;
+    }
+
+    // ---- users ----
+    // Station devices read the branch roster (incl. pinHash) to build the
+    // offline PIN cache; nothing else may see another user's pinHash.
+    match /users/{userId} {
+      allow read: if isManager()
+                   || (isStation() && resource.data.branchIds.hasAny([claims().branchId]))
+                   || request.auth.uid == resource.data.authUid;
+      allow create, update: if isManager();
+      allow delete: if false;
+    }
+
+    // ---- parameters ----
+    // Historical values are retained: a "change" is create-new + close-old,
+    // never an overwrite of the value itself.
+    match /parameters/{id} {
+      allow read: if signedIn();
+      allow create, update: if isManager();
+      allow delete: if false;
+    }
+
+    // ---- auditLog ----
+    match /auditLog/{id} {
+      allow read: if isManager();
+      allow create: if signedIn()
+                     && request.resource.data.actorId is string
+                     && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+
+    // ---- businessDays ----
+    // The `resource == null` arm matters: ensureBusinessDay() does a
+    // getDoc-by-id to check whether today's row exists yet, before lazily
+    // creating it. On a not-yet-created doc, `resource` is null, and
+    // `resource.data.branchId` would be an evaluation error, not a clean
+    // deny — short-circuiting on `resource == null` first avoids that.
+    match /businessDays/{id} {
+      allow read: if signedIn() && (resource == null || sameBranch(resource.data.branchId));
+      allow create: if signedIn() && sameBranch(request.resource.data.branchId);
+      allow update: if isManager() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- shiftTemplates ----
+    match /shiftTemplates/{id} {
+      allow read: if signedIn() && (resource == null || sameBranch(resource.data.branchId));
+      allow create, update: if isManager();
+      allow delete: if false;
+    }
+
+    // ---- shiftInstances ----
+    // Same `resource == null` reasoning as businessDays — the manual shift
+    // override does a getDoc-by-id too.
+    match /shiftInstances/{id} {
+      allow read: if signedIn() && (resource == null || sameBranch(resource.data.branchId));
+      allow create: if signedIn() && sameBranch(request.resource.data.branchId);
+      allow update: if isManager() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- testWrites ----
+    // M0 ships no operational screens (docs/03-M0-FOUNDATION.md: "a test
+    // write is the only write it makes") — this collection exists purely
+    // to prove writeOperational()'s five stamps + audit entry end to end.
+    match /testWrites/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn() && sameBranch(request.resource.data.branchId);
+      allow update, delete: if false;
+    }
+
+    // ---- equipment ----
+    // Manager can add and edit; crew read-only (docs/04-M1-COLDCHAIN.md §1).
+    match /equipment/{id} {
+      allow read: if signedIn() && (resource == null || sameBranch(resource.data.branchId));
+      allow create, update: if isManager() && sameBranch(request.resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- temperatureReadings ----
+    // Append-only, like every operational record — "No update or delete
+    // path exists on readings" is an acceptance criterion, not a preference.
+    match /temperatureReadings/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // ---- excursions ----
+    // Unlike readings, an excursion is a live incident record — first
+    // checks, recovery, closure are all updates to the same document, not
+    // new append-only rows. Any signed-in same-branch user may progress it;
+    // nothing here is manager-gated because the crew member standing at the
+    // unit is exactly who needs to record the checks and the cause.
+    match /excursions/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- quarantineLots ----
+    // Shape given directly in docs/02-DATA-MODEL.md. Crew (via the station
+    // device) or a manager can quarantine a lot; only store_manager/owner
+    // can disposition one, and `basis` must be a real reason, not a blank
+    // field the UI could skip.
+    match /quarantineLots/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if (isStation() || isManager())
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if canReleaseQuarantine()
+                     && sameBranch(resource.data.branchId)
+                     && request.resource.data.status in ['released', 'discarded', 'returned', 'pending_technician']
+                     && request.resource.data.disposition.basis is string
+                     && request.resource.data.disposition.basis.size() > 0;
+      allow delete: if false;
+    }
+
+    // ---- maintenanceTickets ----
+    // "Cannot close without verifiedWorkingBy" is enforced here, not just
+    // in the UI (docs/04-M1-COLDCHAIN.md §5).
+    match /maintenanceTickets/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if (isStation() || isManager())
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+                     && sameBranch(resource.data.branchId)
+                     && (request.resource.data.status != 'closed'
+                         || (request.resource.data.verifiedWorkingBy is string
+                             && request.resource.data.verifiedWorkingBy.size() > 0));
+      allow delete: if false;
+    }
+
+    // ---- exceptions ----
+    // The universal work item — introduced here, consumed by every module
+    // after M1 (docs/02-DATA-MODEL.md).
+    match /exceptions/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- checklistTemplates ----
+    // Manager creates/edits (which produces a new version); crew never
+    // touches templates, only runs (docs/07-M2-CHECKLISTS.md §1).
+    match /checklistTemplates/{id} {
+      allow read: if signedIn() && (resource == null || sameBranch(resource.data.branchId));
+      allow create, update: if isManager() && sameBranch(request.resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- checklistRuns ----
+    // Lazily created like shiftInstances/businessDays — same resource==null
+    // reasoning for the existence-check read.
+    match /checklistRuns/{id} {
+      allow read: if signedIn() && (resource == null || sameBranch(resource.data.branchId));
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- checklistResponses ----
+    // Append-only, same as temperatureReadings — a correction is a new
+    // response for the same item, never an edit.
+    match /checklistResponses/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // ---- queueEscalations ----
+    // A floor action, not a manager approval — any signed-in same-branch
+    // user can log one and later mark it resolved.
+    match /queueEscalations/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- wastageRecords ----
+    // Same crew-or-manager create pattern as quarantineLots — wastage
+    // originates from a quarantine disposition or a manual floor entry.
+    // Append-only: a wastage record is never edited once written.
+    match /wastageRecords/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if (isStation() || isManager())
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // ---- receivingRecords ----
+    // Receiving is a crew/shift-leader task; append-only like every
+    // operational record.
+    match /receivingRecords/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if (isStation() || isManager())
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // ---- timeEntries ----
+    // Append-only clock events — a correction is a new entry with
+    // correctsId, never an edit of the original (docs/08-M3-TIME-ROSTER-
+    // CERTIFICATION.md).
+    match /timeEntries/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // ---- rosterAssignments ----
+    // A living record like excursions/checklistRuns — created once, then
+    // updated for status changes (cancelling is a status change, not a
+    // delete). Manager-only: the certification check at assignment time
+    // only matters if the write path itself is gated to the person doing
+    // the scheduling.
+    match /rosterAssignments/{id} {
+      allow read: if signedIn() && (resource == null || sameBranch(resource.data.branchId));
+      allow create: if isManager()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if isManager() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- cashSessions ----
+    // A drawer bound to one named person (docs/09-M4-CASH-CONTROL.md §1).
+    // Closing is gated the same way excursions are — any signed-in
+    // same-branch user, not specifically "the same person": station auth is
+    // a shared identity, so rules can't verify that more precisely (see
+    // docs/01-ARCHITECTURE.md on the PIN being attribution, not authorisation).
+    match /cashSessions/{id} {
+      allow read: if signedIn() && (resource == null || sameBranch(resource.data.branchId));
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- cashDrops ----
+    // Bag number plus receivedBy/receivedAt is the chain of custody. Crew
+    // or manager can log a drop; only a manager can confirm receipt of it —
+    // "manager receipt confirmation" is explicit in docs/06-ROADMAP.md.
+    match /cashDrops/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if (isStation() || isManager())
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if isManager() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- cashCloseCounts ----
+    // create is the blind count — the cashier counting their own drawer, no
+    // expected figure visible yet. update is the reveal (and the
+    // investigation note): a supervisory action. The extra rule that a
+    // variance beyond cash.shift_leader_approval_limit needs a
+    // store_manager/owner specifically is enforced client-side
+    // (docs/09-M4-CASH-CONTROL.md §5) — rules can't practically read a live
+    // parameter value at write time for something that isn't the hard
+    // security boundary here.
+    match /cashCloseCounts/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if isSupervisor() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- cashRegisterExceptions ----
+    // The void/refund/override/no-sale log — this system never performs
+    // these itself (no POS integration), it only records that they
+    // happened, for the same audit-trail reason as every other exception
+    // source (docs/09-M4-CASH-CONTROL.md).
+    match /cashRegisterExceptions/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if (isStation() || isManager())
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if isSupervisor() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- incidentRecords ----
+    // No role gate beyond signed-in/same-branch — an incident is exactly
+    // the kind of thing the person standing there needs to record and act
+    // on immediately, same reasoning as excursions. The closure gate below
+    // is the real guard, not a role (docs/10-M5-INCIDENTS.md).
+    match /incidentRecords/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+                     && sameBranch(resource.data.branchId)
+                     && (request.resource.data.status != 'closed'
+                         || (request.resource.data.rootCause is string
+                             && request.resource.data.rootCause.size() > 0));
+      allow delete: if false;
+    }
+
+    // ---- cctvPreservations ----
+    // Append-only — a preservation entry, once logged, is chain-of-custody
+    // evidence, not a draft. This system never stores or serves the actual
+    // footage; clipRef is a string a human typed (docs/00-BRIEF.md non-goals).
+    match /cctvPreservations/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // ---- shiftHandovers ----
+    // No role gate beyond signed-in/same-branch, same reasoning as
+    // excursions and incidents — whoever is physically generating or
+    // accepting a handover is exactly who needs to (docs/11-M6-SHIFT-HANDOVER.md).
+    match /shiftHandovers/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- documents ----
+    // Manager-configured reference data, not a floor event — same shape as
+    // checklistTemplates. A new version is a new document; create covers
+    // both a brand-new code and a version bump (docs/12-M7-DOCUMENT-CONTROL.md).
+    match /documents/{id} {
+      allow read: if signedIn() && (resource == null || sameBranch(resource.data.branchId));
+      allow create, update: if isManager() && sameBranch(request.resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- documentAcknowledgments ----
+    // Append-only — acknowledging a new version is a new record, never an
+    // edit of the old one.
+    match /documentAcknowledgments/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // ---- dailySummaries ----
+    // Write-never from a client — only closeBusinessDay (Cloud Function,
+    // Admin SDK) produces these. A client-writable dailySummaries would let
+    // anyone fabricate the one document the owner actually reads at a
+    // glance (docs/13-M8-DASHBOARD-DIGEST.md).
+    match /dailySummaries/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow write: if false;
+    }
+
+    // ---- mail ----
+    // Cloud-Function-only, Admin-SDK-only — this is the collection the
+    // Firebase Trigger Email extension (if installed) watches. No client
+    // path reads or writes it.
+    match /mail/{id} {
+      allow read, write: if false;
+    }
+
+    // ---- leaveRequests ----
+    // Any signed-in same-branch user can create their own request (trusted
+    // client-stamped actorId, same pattern as every other create rule
+    // here); only a manager can decide it (docs/14-M9-EMPLOYEE-SELF-SERVICE.md).
+    match /leaveRequests/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if isManager() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- timeEntryDisputes ----
+    // A flag, not an edit — the disputed timeEntries doc is never touched
+    // by this collection. Only a manager resolves it (which separately
+    // calls the existing correct() path on timeEntries).
+    match /timeEntryDisputes/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time;
+      allow update: if isManager() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- clientErrors ----
+    // Written by the app's error boundary. Diagnostic, not operational —
+    // no branchId guarantee (a crash can happen before branch resolves).
+    match /clientErrors/{id} {
+      allow read: if isManager();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    // Everything else defaults closed — a new collection needs an explicit
+    // rule before it can be written, on purpose.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
