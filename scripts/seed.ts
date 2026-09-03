@@ -25,10 +25,18 @@ async function seedBranch() {
   await db.collection('branches').doc('001').set({
     code: '001',
     name: 'Imus',
-    operatingMode: 'scheduled',
-    openTime: '06:00',
-    closeTime: '24:00',
-    businessDayCutoff: '24:00',
+    operatingMode: '24_7',
+    // Not applicable at 24/7 in the trading-hours sense (G7_WORK_ORDER_FINAL_1.md
+    // Decision 2) — the store never actually opens or closes. Both fields stay
+    // required by the Branch type (src/lib/types.ts) because ensureBusinessDay
+    // (src/lib/businessDay.ts) still computes opensAt from openTime
+    // unconditionally, even in '24_7' mode; closeTime is unused in that mode
+    // (only the non-24_7 branch of its ternary reads it) but kept aligned to
+    // the same boundary rather than left at the stale 06:00–24:00 pair.
+    // Neutralised to the new cutoff, not removed.
+    openTime: '07:00',
+    closeTime: '07:00',
+    businessDayCutoff: '07:00',
     timezone: 'Asia/Manila',
     address: 'Imus, Cavite, Philippines',
     status: 'active',
@@ -58,13 +66,18 @@ async function seedRoles() {
   console.log(`✓ ${ROLES.length} roles`)
 }
 
-// Placeholder patterns pending the actual roster in Manual Appendix — three
-// templates covering the 06:00-24:00 trading window (branch.open_time /
-// branch.close_time). Revisit when M3 (roster) is built.
+// Real roster (G7_WORK_ORDER_FINAL_1.md, 2026-09-02) — 12 staff on three
+// fixed shifts, replacing the earlier placeholder that assumed a 9-staff,
+// two-shift 06:00–24:00 window. G crosses midnight (endTime <= startTime),
+// which ensureShiftInstances (src/lib/businessDay.ts) already handles —
+// see that function's own comment. Headcount is "assigned" for max,
+// "minimum on duty" for min, both from the work order's roster table; the
+// Store Manager's own shift-by-shift presence (M Mon–Thu, A Fri–Sat) is
+// why max exceeds the base assigned count on M and A.
 const SHIFT_TEMPLATES = [
-  { name: 'Morning', startTime: '06:00', endTime: '14:00', targetHeadcount: { min: 2, max: 3 } },
-  { name: 'Afternoon', startTime: '14:00', endTime: '19:00', targetHeadcount: { min: 2, max: 3 } },
-  { name: 'Evening', startTime: '19:00', endTime: '24:00', targetHeadcount: { min: 2, max: 3 } },
+  { name: 'Morning', startTime: '06:00', endTime: '15:00', targetHeadcount: { min: 2, max: 3 } },
+  { name: 'Afternoon', startTime: '14:00', endTime: '23:00', targetHeadcount: { min: 4, max: 6 } },
+  { name: 'Graveyard', startTime: '22:00', endTime: '07:00', targetHeadcount: { min: 3, max: 4 } },
 ]
 
 async function seedShiftTemplates() {
@@ -142,10 +155,15 @@ type ParamSeed = {
 // Source of truth: G7 Operations Manual v1.2 Appendix A / Appendix G, as
 // transcribed in docs/05-PARAMETERS.md. Do not add values not in that file.
 const PARAMS: ParamSeed[] = [
-  { key: 'branch.operating_mode', value: 'scheduled', dataType: 'enum', owner: 'owner' },
-  { key: 'branch.open_time', value: '06:00', dataType: 'time', owner: 'owner' },
-  { key: 'branch.close_time', value: '24:00', dataType: 'time', owner: 'owner' },
-  { key: 'branch.business_day_cutoff', value: '24:00', dataType: 'time', owner: 'owner' },
+  // 24/7 from day 9 (G7_WORK_ORDER_FINAL_1.md Decision 2, 2026-09-02) —
+  // superseded from the original 06:00-24:00/scheduled seed. Kept in sync
+  // with the branches/001 doc seedBranch() writes; see that function's
+  // comment for why open_time/close_time stay populated rather than blank
+  // even though the store never actually opens or closes at 24/7.
+  { key: 'branch.operating_mode', value: '24_7', dataType: 'enum', owner: 'owner' },
+  { key: 'branch.open_time', value: '07:00', dataType: 'time', owner: 'owner' },
+  { key: 'branch.close_time', value: '07:00', dataType: 'time', owner: 'owner' },
+  { key: 'branch.business_day_cutoff', value: '07:00', dataType: 'time', owner: 'owner' },
   { key: 'session.pin_timeout_minutes', value: 15, dataType: 'duration_minutes', unit: 'minutes', owner: 'store_manager' },
 
   { key: 'service.greeting_seconds', value: 3, dataType: 'number', min: 1, max: 10, owner: 'store_manager' },
