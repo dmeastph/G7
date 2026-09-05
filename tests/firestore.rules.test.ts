@@ -756,3 +756,66 @@ describe('timeEntryDisputes', () => {
     await assertFails(deleteDoc(doc(managerCtx().firestore(), 'timeEntryDisputes/td1')))
   })
 })
+
+describe('items (M10 item master bridge)', () => {
+  const item = {
+    sourceItemId: 'gpos-item-1', sku: 'RAMYEON-1', barcode: '1000000000001', name: 'Shin Ramyeon',
+    category: 'noodle', priceCentavos: 15000, vatClass: 'vatable', presentInLatestExport: true,
+    reorderPoint: null, defaultSupplierId: null, unitOfPurchase: null, active: true,
+    lastSyncedAt: null, createdAt: undefined,
+  }
+
+  test('no client can create or delete an item — only runCatalogueSync (Admin SDK) writes one', async () => {
+    await assertFails(setDoc(doc(managerCtx().firestore(), 'items/i1'), { ...item, createdAt: serverTimestamp() }))
+
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'items/i1'), { ...item, createdAt: serverTimestamp() })
+    })
+    await assertFails(deleteDoc(doc(managerCtx().firestore(), 'items/i1')))
+  })
+
+  test('a manager can update the three operational fields; a cashier cannot update any of them', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'items/i1'), { ...item, createdAt: serverTimestamp() })
+    })
+
+    await assertSucceeds(
+      updateDoc(doc(managerCtx().firestore(), 'items/i1'), { reorderPoint: 10, unitOfPurchase: 'case of 24' }),
+    )
+    await assertFails(updateDoc(doc(staffCtx().firestore(), 'items/i1'), { reorderPoint: 5 }))
+  })
+
+  test('a manager cannot change a synced field, even alongside an operational one', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'items/i1'), { ...item, createdAt: serverTimestamp() })
+    })
+    await assertFails(updateDoc(doc(managerCtx().firestore(), 'items/i1'), { reorderPoint: 10, priceCentavos: 99999 }))
+  })
+
+  test('any signed-in user can read items', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'items/i1'), { ...item, createdAt: serverTimestamp() })
+    })
+    await assertSucceeds(getDoc(doc(staffCtx().firestore(), 'items/i1')))
+  })
+})
+
+describe('catalogueSyncs (M10)', () => {
+  const sync = {
+    trigger: 'manual', triggeredBy: 'manager-uid', triggeredByName: 'Manager', handoverId: null,
+    sourceExportedAt: '2026-09-05T00:00:00.000Z', status: 'ok', errorMessage: null,
+    newCount: 1, changedCount: 0, missingCount: 0, createdAt: undefined,
+  }
+
+  test('no client, including a manager, can write a sync record — Admin SDK only', async () => {
+    await assertFails(setDoc(doc(managerCtx().firestore(), 'catalogueSyncs/s1'), { ...sync, createdAt: serverTimestamp() }))
+  })
+
+  test('a manager can read sync history; a cashier cannot', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'catalogueSyncs/s1'), { ...sync, createdAt: serverTimestamp() })
+    })
+    await assertSucceeds(getDoc(doc(managerCtx().firestore(), 'catalogueSyncs/s1')))
+    await assertFails(getDoc(doc(staffCtx().firestore(), 'catalogueSyncs/s1')))
+  })
+})

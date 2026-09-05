@@ -42,10 +42,48 @@ Leave entitlement begins at regularisation (6 months). Model **company leave** a
 
 ---
 
+## M10 · Item master (bridge)
+
+**Promoted off the "do not build" list, 2026-09-05.** This roadmap originally deferred inventory on "once an item master exists" — that precondition is the module below. `g7-pos` has been selected and is live, which also lifts the gate on M3 below.
+
+One canonical product list in `g7-ops`, built as a **one-way bridge** from `g7-pos`'s existing item catalogue rather than a second item master maintained by hand. `g7-pos` stays the place staff actually add/edit products (that's already built and in daily use); `g7-ops` gets a synced read-only copy to hang inventory, receiving and purchasing against.
+
+**Decision, not a default:** the two systems are on deliberately separate Firebase projects (`g7-pos` docs/13-DEPLOYMENT.md's own reasoning). A live, unauthenticated cross-project read from the browser was considered and rejected — it reopens that separation. What's built instead: **automatic sync, fired by every accepted shift handover** (M6) — roughly 3 times a day given the M/A/G roster, server-to-server (a `g7-ops` Cloud Function calls a `g7-pos` Cloud Function using a shared secret, never from the browser), applied directly with no live review gate. Safety comes from the sync logic itself, not a human in the loop: a missing item is always flagged, never deleted. A manual "Sync now" button runs the identical logic on demand. Needs a one-time shared-secret setup across both projects (same category of step as the Vertex AI IAM grant in `g7-pos`'s own deployment history, simpler in kind). Full spec: `docs/15-M10-ITEM-MASTER.md`.
+
+**Paper twin:** none — this is new scope, not a paper-form digitisation.
+
+## M11 · Inventory
+
+Stock-on-hand ledger keyed to the M10 item master. Receiving (M15) posts positive movements; wastage (already logged in M2) and manual consumption entries post negative ones. Reorder point per item, low-stock surfaced on the dashboard (M8) and in reports (M16).
+
+## M12 · Suppliers
+
+Real master data, replacing the free-text supplier name `ReceivingLogPage` (M2) has used until now: name, category, contact info, certifications, payment terms, active status. Existing receiving records keep their free-text value; only new records reference a real supplier.
+
+## M13 · Purchase requests
+
+Staff request items/quantities/need-by date. Approval follows the same role pattern the rest of `g7-ops` already uses (`cash.approve_void`-style permission key, gated in rules not just UI). An approved PR is the only path into M14.
+
+## M14 · Purchase orders
+
+Created from an approved PR (or standalone, manager-only), against a real supplier (M12), with per-line quantity and unit cost. Status lifecycle: draft → sent → confirmed → partially received → received → cancelled. `poId` is the join key M15 needs to close the loop.
+
+## M15 · Receiving becomes a real three-way match
+
+Extends the *existing* `ReceivingLogPage` (M2) rather than replacing it. "Quantity ordered" per line comes from the referenced PO instead of being hand-typed; a completed delivery closes out the matching PO line(s) and posts a receipt into M11's inventory ledger automatically. A receiving record with no PO reference still works exactly as it does today — this is additive, not a breaking change to a screen already in daily use.
+
+## M16 · Procurement reports
+
+New tabs on the reporting pattern `g7-pos` already ships (docs cross-reference: `g7-pos/docs/11-C4-REPORTS.md`): open PO aging, spend by supplier/category/time, supplier on-time-delivery percentage, low-stock/reorder alerts from M11.
+
+## M17 · Purchase/demand forecast
+
+Reorder quantity and timing suggestions from M11's consumption trend. Deliberately last — meaningless without real inventory history to learn from. **Not sales forecasting** — that would require `g7-ops` to see `g7-pos`'s actual sales data, which the same separate-projects decision above currently prevents. Revisit only if that's genuinely wanted; it is a materially bigger scope change than anything else on this list.
+
+---
+
 ## Later phases — do not build
 
-**Phase 2** — inventory and FEFO, once an item master exists.
-**Phase 3** — POS sales import, once the POS is selected. The schema reserves `shiftInstanceId` and `businessDayId` on POS entities. Reserve the keys, build nothing.
 **Phase 4** — multi-branch scorecards.
 **Phase 5** — loyalty and CRM.
 

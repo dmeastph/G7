@@ -613,3 +613,47 @@ export type TimeEntryDispute = OperationalBase & {
   resolvedAt: Timestamp | null
   correctionEntryId: string | null
 }
+
+// ---- M10 — item master bridge (docs/15-M10-ITEM-MASTER.md) ----
+
+// Not OperationalBase — this is synced reference data mirrored from
+// g7-pos, not a floor event with a businessDayId/shiftInstanceId. Synced
+// fields come from the last sync and are never hand-edited here;
+// operational fields are g7-ops's own and survive every future sync
+// untouched.
+export type ItemDoc = {
+  sourceItemId: string // g7-pos's own document ID — the join key, not SKU
+  sku: string
+  barcode: string | null
+  name: string
+  category: string
+  priceCentavos: number
+  vatClass: 'vatable' | 'vat_exempt' | 'zero_rated'
+  presentInLatestExport: boolean // false = missing from the most recent sync — flagged, never deleted
+
+  reorderPoint: number | null
+  defaultSupplierId: string | null // null until M12 (suppliers) exists
+  unitOfPurchase: string | null // e.g. "case of 24" — free text until a real need for structure shows up
+
+  active: boolean
+  lastSyncedAt: Timestamp | null // null until the first successful sync
+  createdAt: Timestamp
+}
+
+// One per sync run, not per item — written only by runCatalogueSync
+// (Cloud Function, Admin SDK), whether fired by an accepted handover or
+// the manual "Sync now" button. A failed run still writes one of these,
+// with status 'failed' and no items touched.
+export type CatalogueSyncDoc = {
+  trigger: 'handover' | 'manual'
+  triggeredBy: string | null
+  triggeredByName: string | null
+  handoverId: string | null // set only when trigger === 'handover'
+  sourceExportedAt: string | null // g7-pos's own export timestamp; null on a failed run
+  status: 'ok' | 'failed'
+  errorMessage: string | null
+  newCount: number
+  changedCount: number
+  missingCount: number
+  createdAt: Timestamp
+}

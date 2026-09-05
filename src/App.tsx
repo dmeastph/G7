@@ -55,6 +55,7 @@ const MySelfServicePage = lazy(() => import('@/modules/selfservice/MySelfService
 const MyLeaveRequestsPage = lazy(() => import('@/modules/selfservice/MyLeaveRequestsPage').then((m) => ({ default: m.MyLeaveRequestsPage })))
 const LeaveApprovalsPage = lazy(() => import('@/modules/selfservice/LeaveApprovalsPage').then((m) => ({ default: m.LeaveApprovalsPage })))
 const DisputesPage = lazy(() => import('@/modules/selfservice/DisputesPage').then((m) => ({ default: m.DisputesPage })))
+const CatalogueSyncPage = lazy(() => import('@/modules/catalogue/CatalogueSyncPage').then((m) => ({ default: m.CatalogueSyncPage })))
 
 export function App() {
   const auth = useAuth()
@@ -141,6 +142,7 @@ function AuthedShell({ auth }: { auth: Extract<AuthState, { mode: 'managed' | 's
             <Route path="/self/leave" element={<MyLeaveRequestsPage />} />
             <Route path="/self/disputes" element={<DisputesPage />} />
             <Route path="/leave/approvals" element={<LeaveApprovalsPage />} />
+            <Route path="/catalogue" element={<CatalogueSyncPage />} />
           </Routes>
         </Suspense>
       </main>

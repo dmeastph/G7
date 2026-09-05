@@ -5,11 +5,14 @@
 // staff PIN — bcrypt happens here, server-side, never in the browser bundle
 // for a PIN being *set* (client-side bcrypt is only used to *verify*).
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore'
+import { defineSecret, defineString } from 'firebase-functions/params'
 import { logger } from 'firebase-functions'
 import { initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore'
 import bcrypt from 'bcryptjs'
+import { computeCatalogueDiff, type FetchedItem, type ExistingItem } from './catalogueSync.js'
 
 initializeApp()
 
@@ -332,5 +335,171 @@ export const resetUserPin = onCall<ResetUserPinRequest>(async (request) => {
     branchId,
   })
 
+  return { ok: true }
+})
+
+// Item master bridge (docs/15-M10-ITEM-MASTER.md). g7-pos and g7-ops are
+// deliberately separate Firebase projects (g7-pos/docs/13-DEPLOYMENT.md);
+// this calls g7-pos's export endpoint server-to-server using a shared
+// secret, never from the browser. Both secrets are set independently per
+// project via `firebase functions:secrets:set CATALOGUE_SYNC_SECRET` — the
+// same value on both sides, never committed, never sent to a client.
+const catalogueSyncSecret = defineSecret('CATALOGUE_SYNC_SECRET')
+// The deployed g7-pos export function's URL — not sensitive, so a plain
+// string parameter (.env / functions config), not Secret Manager. Not
+// hardcoded because it differs between the emulator and the real project,
+// and because a 2nd-gen HTTPS function's exact URL is only known once
+// deployed.
+const g7PosExportUrl = defineString('G7_POS_EXPORT_URL')
+
+type CatalogueSyncTrigger = 'handover' | 'manual'
+
+/** The one function both the handover trigger and the manual button call.
+ *  Never partially applies — a fetch failure writes a failed
+ *  CatalogueSyncDoc and stops before touching `items` at all. A missing
+ *  item is flagged, never deleted, which is what makes it safe to run
+ *  this unattended three times a day with no human review gate. */
+async function runCatalogueSync(
+  trigger: CatalogueSyncTrigger,
+  triggeredBy: string | null,
+  triggeredByName: string | null,
+  handoverId: string | null,
+): Promise<void> {
+  const db = getFirestore()
+  const baseSyncDoc = { trigger, triggeredBy, triggeredByName, handoverId, createdAt: FieldValue.serverTimestamp() }
+
+  let payload: { exportedAt: string; items: FetchedItem[] }
+  try {
+    const response = await fetch(g7PosExportUrl.value(), { headers: { 'x-sync-secret': catalogueSyncSecret.value() } })
+    if (!response.ok) {
+      throw new Error(`g7-pos export endpoint returned HTTP ${response.status}`)
+    }
+    payload = (await response.json()) as { exportedAt: string; items: FetchedItem[] }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    logger.error(`runCatalogueSync (${trigger}): fetch failed — ${errorMessage}`)
+    await db.collection('catalogueSyncs').add({
+      ...baseSyncDoc,
+      sourceExportedAt: null,
+      status: 'failed',
+      errorMessage,
+      newCount: 0,
+      changedCount: 0,
+      missingCount: 0,
+    })
+    return
+  }
+
+  const existingSnap = await db.collection('items').get()
+  const existing: ExistingItem[] = existingSnap.docs.map((d) => {
+    const data = d.data()
+    return {
+      sourceItemId: data.sourceItemId,
+      sku: data.sku,
+      barcode: data.barcode,
+      name: data.name,
+      category: data.category,
+      priceCentavos: data.priceCentavos,
+      vatClass: data.vatClass,
+      presentInLatestExport: data.presentInLatestExport,
+    }
+  })
+
+  const diff = computeCatalogueDiff(payload.items, existing)
+  const existingIdToDocId = new Map(existingSnap.docs.map((d) => [d.data().sourceItemId as string, d.id]))
+
+  const batch = db.batch()
+  for (const item of diff.newItems) {
+    const ref = db.collection('items').doc()
+    batch.set(ref, {
+      sourceItemId: item.itemId,
+      sku: item.sku,
+      barcode: item.barcode,
+      name: item.name,
+      category: item.category,
+      priceCentavos: item.priceCentavos,
+      vatClass: item.vatClass,
+      presentInLatestExport: true,
+      reorderPoint: null,
+      defaultSupplierId: null,
+      unitOfPurchase: null,
+      active: true,
+      lastSyncedAt: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+    })
+  }
+  for (const item of diff.changedItems) {
+    const docId = existingIdToDocId.get(item.itemId)
+    if (!docId) continue
+    batch.update(db.collection('items').doc(docId), {
+      sku: item.sku,
+      barcode: item.barcode,
+      name: item.name,
+      category: item.category,
+      priceCentavos: item.priceCentavos,
+      vatClass: item.vatClass,
+      presentInLatestExport: true,
+      lastSyncedAt: FieldValue.serverTimestamp(),
+    })
+  }
+  for (const sourceItemId of diff.missingSourceItemIds) {
+    const docId = existingIdToDocId.get(sourceItemId)
+    if (!docId) continue
+    batch.update(db.collection('items').doc(docId), { presentInLatestExport: false, lastSyncedAt: FieldValue.serverTimestamp() })
+  }
+  await batch.commit()
+
+  await db.collection('catalogueSyncs').add({
+    ...baseSyncDoc,
+    sourceExportedAt: payload.exportedAt,
+    status: 'ok',
+    errorMessage: null,
+    newCount: diff.newItems.length,
+    changedCount: diff.changedItems.length,
+    missingCount: diff.missingSourceItemIds.length,
+  })
+  await db.collection('auditLog').add({
+    entity: 'catalogueSync',
+    entityId: 'items',
+    action: 'sync',
+    before: null,
+    after: { newCount: diff.newItems.length, changedCount: diff.changedItems.length, missingCount: diff.missingSourceItemIds.length },
+    actorId: triggeredBy ?? 'cloud-function:runCatalogueSync',
+    actorName: triggeredByName ?? `automatic (${trigger})`,
+    at: FieldValue.serverTimestamp(),
+    deviceId: `cloud-function:runCatalogueSync:${trigger}`,
+    branchId: 'n/a',
+  })
+
+  logger.info(`runCatalogueSync (${trigger}): ${diff.newItems.length} new, ${diff.changedItems.length} changed, ${diff.missingSourceItemIds.length} missing`)
+}
+
+/** Fires when a shift handover is accepted — the moment the incoming
+ *  leader actually takes the shift, not when the pack was generated. A
+ *  sync failure here never blocks or reverses the handover: by the time
+ *  this trigger runs, `shiftHandovers` already shows `status: 'accepted'`,
+ *  and there is no path back from a sync failure to un-accept it. */
+export const onShiftHandoverAccepted = onDocumentUpdated(
+  { document: 'shiftHandovers/{handoverId}', region: 'asia-southeast1', secrets: [catalogueSyncSecret] },
+  async (event) => {
+    const before = event.data?.before.data() as { status?: string } | undefined
+    const after = event.data?.after.data() as { status?: string; acceptedBy?: string; acceptedByName?: string } | undefined
+    if (!after || before?.status === 'accepted' || after.status !== 'accepted') return
+
+    await runCatalogueSync('handover', after.acceptedBy ?? null, after.acceptedByName ?? null, event.params.handoverId)
+  },
+)
+
+/** Manual override of the same sync the handover trigger runs — for a
+ *  manager who changed prices in g7-pos and doesn't want to wait for the
+ *  next shift change. Same MANAGER_ROLES gate as closeBusinessDay. */
+export const syncCatalogueNow = onCall({ secrets: [catalogueSyncSecret] }, async (request) => {
+  requireCallerRole(request.auth, MANAGER_ROLES)
+  await runCatalogueSync(
+    'manual',
+    request.auth!.uid,
+    (request.auth!.token.email as string | undefined) ?? request.auth!.uid,
+    null,
+  )
   return { ok: true }
 })

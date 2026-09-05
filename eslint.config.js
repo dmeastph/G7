@@ -31,6 +31,7 @@ const nodeGlobals = {
   __dirname: 'readonly',
   Buffer: 'readonly',
   FirebaseFirestore: 'readonly',
+  fetch: 'readonly',
 }
 
 const baseRules = {

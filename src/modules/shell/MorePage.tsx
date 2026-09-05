@@ -130,6 +130,9 @@ export function MorePage() {
               <Link to="/parameters">Parameters</Link>
             </li>
             <li>
+              <Link to="/catalogue">Catalogue</Link>
+            </li>
+            <li>
               <Link to="/documents-register">Acknowledgment register</Link>
             </li>
             <li>

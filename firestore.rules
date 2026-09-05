@@ -477,6 +477,31 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---- items (M10, docs/15-M10-ITEM-MASTER.md) ----
+    // Synced fields (sourceItemId, sku, barcode, name, category,
+    // priceCentavos, vatClass, presentInLatestExport, lastSyncedAt) are
+    // written only by runCatalogueSync (Cloud Function, Admin SDK — bypasses
+    // these rules entirely). A client update here is restricted to the
+    // three operational fields that are genuinely g7-ops's own to own; a
+    // manager cannot touch a synced field even by including it unchanged in
+    // the same request, since affectedKeys() only allows real diffs.
+    match /items/{id} {
+      allow read: if signedIn();
+      allow create, delete: if false;
+      allow update: if isManager()
+                     && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['reorderPoint', 'defaultSupplierId', 'unitOfPurchase']);
+    }
+
+    // ---- catalogueSyncs (M10) ----
+    // Written only by runCatalogueSync (Admin SDK) — no client write path
+    // at all, including for a manager. An audit trail of sync runs, not
+    // editable data.
+    match /catalogueSyncs/{id} {
+      allow read: if isManager();
+      allow create, update, delete: if false;
+    }
+
     // Everything else defaults closed — a new collection needs an explicit
     // rule before it can be written, on purpose.
     match /{document=**} {
