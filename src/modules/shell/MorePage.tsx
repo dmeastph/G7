@@ -3,7 +3,7 @@
 // / tickets (used often enough to need a tap, rarely enough not to need a
 // permanent one).
 import { Link } from 'react-router-dom'
-import { useAuth } from '@/lib/auth'
+import { useAuth, signOut } from '@/lib/auth'
 
 export function MorePage() {
   const auth = useAuth()
@@ -12,6 +12,13 @@ export function MorePage() {
   return (
     <div className="more-page">
       <h2>More</h2>
+      <section className="card">
+        <h2>Account</h2>
+        <p>{auth.mode === 'managed' || auth.mode === 'station' ? auth.user.email : null}</p>
+        <button type="button" onClick={() => signOut()}>
+          Sign out
+        </button>
+      </section>
       <section className="card">
         <h2>Dashboard</h2>
         <ul>
