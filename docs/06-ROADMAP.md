@@ -58,7 +58,7 @@ One canonical product list in `g7-ops`, built as a **one-way bridge** from `g7-p
 
 ## M12 · Suppliers
 
-Real master data, replacing the free-text supplier name `ReceivingLogPage` (M2) has used until now: name, category, contact info, certifications, payment terms, active status. Existing receiving records keep their free-text value; only new records reference a real supplier.
+**Spec written, 2026-09-06 — see `docs/17-M12-SUPPLIERS.md`.** Real master data, replacing the free-text supplier name `ReceivingLogPage` (M2) has used until now: name, category, contact info, certifications, payment terms, active status. Existing receiving records keep their free-text value; only new records reference a real supplier.
 
 ## M13 · Purchase requests
 
