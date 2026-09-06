@@ -527,6 +527,19 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---- suppliers (M12) ----
+    // Real master data, manager-only to create/edit — unlike wastage's item
+    // picker, a supplier typed in by whoever is receiving a delivery risks
+    // duplicate/junk rows ("Acme Produce" vs "ACME Produce Co."). No delete:
+    // a supplier that stops being used is deactivated, never removed, so a
+    // receiving record or item's defaultSupplierId never dangles
+    // (docs/17-M12-SUPPLIERS.md).
+    match /suppliers/{id} {
+      allow read: if signedIn();
+      allow create, update: if isManager();
+      allow delete: if false;
+    }
+
     // Everything else defaults closed — a new collection needs an explicit
     // rule before it can be written, on purpose.
     match /{document=**} {

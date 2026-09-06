@@ -378,6 +378,7 @@ export type ReceivingRecord = OperationalBase & {
   temperatureCheckC: number | null
   discrepancyNoted: boolean
   discrepancyNote: string
+  supplierId: string | null // M12 — links to suppliers/{id}; null = free-text supplier only, same as before M12
 }
 
 // ---- M3 — time, roster and certification (docs/08-M3-TIME-ROSTER-CERTIFICATION.md) ----
@@ -682,4 +683,21 @@ export type ConsumptionEntry = OperationalBase & {
   itemId: string
   qty: number
   reason: string
+}
+
+// ---- M12 — suppliers (docs/17-M12-SUPPLIERS.md) ----
+
+// No delete, ever — a supplier that stops being used is deactivated, never
+// removed, so anything that already points at it (a receiving record, a
+// future PO) keeps a valid reference.
+export type Supplier = {
+  name: string
+  category: string // free text, same posture as ItemDoc.category — no fixed taxonomy imposed
+  contactName: string | null
+  contactPhone: string | null
+  contactEmail: string | null
+  certifications: string[] // free-text tags, e.g. ["Halal", "FDA-registered"]
+  paymentTerms: string | null // free text, e.g. "Net 30", "COD"
+  active: boolean
+  createdAt: Timestamp
 }

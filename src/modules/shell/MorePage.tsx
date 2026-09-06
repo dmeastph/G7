@@ -146,6 +146,9 @@ export function MorePage() {
               <Link to="/inventory">Inventory</Link>
             </li>
             <li>
+              <Link to="/suppliers">Suppliers</Link>
+            </li>
+            <li>
               <Link to="/documents-register">Acknowledgment register</Link>
             </li>
             <li>

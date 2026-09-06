@@ -869,3 +869,31 @@ describe('consumptionEntries (M11)', () => {
     await assertFails(setDoc(doc(stationCtx().firestore(), 'consumptionEntries/c4'), withoutItemId))
   })
 })
+
+describe('suppliers (M12)', () => {
+  const supplier = {
+    name: 'Acme Produce', category: 'produce', contactName: 'Juan', contactPhone: '0917',
+    contactEmail: null, certifications: ['Halal'], paymentTerms: 'Net 30', active: true,
+    createdAt: undefined,
+  }
+
+  test('a manager can create and edit a supplier; a cashier cannot', async () => {
+    await assertSucceeds(setDoc(doc(managerCtx().firestore(), 'suppliers/s1'), { ...supplier, createdAt: serverTimestamp() }))
+    await assertSucceeds(updateDoc(doc(managerCtx().firestore(), 'suppliers/s1'), { active: false }))
+    await assertFails(setDoc(doc(staffCtx().firestore(), 'suppliers/s2'), { ...supplier, createdAt: serverTimestamp() }))
+  })
+
+  test('no client, including a manager, can delete a supplier', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'suppliers/s1'), { ...supplier, createdAt: serverTimestamp() })
+    })
+    await assertFails(deleteDoc(doc(managerCtx().firestore(), 'suppliers/s1')))
+  })
+
+  test('any signed-in user can read suppliers', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'suppliers/s1'), { ...supplier, createdAt: serverTimestamp() })
+    })
+    await assertSucceeds(getDoc(doc(staffCtx().firestore(), 'suppliers/s1')))
+  })
+})

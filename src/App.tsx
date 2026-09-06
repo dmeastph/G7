@@ -58,6 +58,7 @@ const DisputesPage = lazy(() => import('@/modules/selfservice/DisputesPage').the
 const CatalogueSyncPage = lazy(() => import('@/modules/catalogue/CatalogueSyncPage').then((m) => ({ default: m.CatalogueSyncPage })))
 const InventoryPage = lazy(() => import('@/modules/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
 const LogConsumptionPage = lazy(() => import('@/modules/inventory/LogConsumptionPage').then((m) => ({ default: m.LogConsumptionPage })))
+const SuppliersPage = lazy(() => import('@/modules/suppliers/SuppliersPage').then((m) => ({ default: m.SuppliersPage })))
 
 export function App() {
   const auth = useAuth()
@@ -147,6 +148,7 @@ function AuthedShell({ auth }: { auth: Extract<AuthState, { mode: 'managed' | 's
             <Route path="/catalogue" element={<CatalogueSyncPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/inventory/consumption" element={<LogConsumptionPage />} />
+            <Route path="/suppliers" element={<SuppliersPage />} />
           </Routes>
         </Suspense>
       </main>

@@ -4,10 +4,10 @@
 // "g7-ops's copy is for what an item *does* operationally"). firestore.rules
 // enforces this too: the update rule on items/{id} only allows these three
 // keys to change.
-import { useState } from 'react'
-import { updateDoc, doc } from 'firebase/firestore'
-import { itemsCol } from '@/lib/firebase'
-import type { ItemDoc } from '@/lib/types'
+import { useEffect, useState } from 'react'
+import { updateDoc, doc, onSnapshot } from 'firebase/firestore'
+import { itemsCol, suppliersCol } from '@/lib/firebase'
+import type { ItemDoc, Supplier } from '@/lib/types'
 
 type Props = {
   item: ItemDoc & { id: string }
@@ -17,8 +17,16 @@ type Props = {
 export function ItemOperationalFieldsDialog({ item, onClose }: Props) {
   const [reorderPoint, setReorderPoint] = useState(item.reorderPoint !== null ? String(item.reorderPoint) : '')
   const [unitOfPurchase, setUnitOfPurchase] = useState(item.unitOfPurchase ?? '')
+  const [defaultSupplierId, setDefaultSupplierId] = useState(item.defaultSupplierId ?? '')
+  const [suppliers, setSuppliers] = useState<(Supplier & { id: string })[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    return onSnapshot(suppliersCol, (snap) => setSuppliers(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  }, [])
+
+  const activeSuppliers = [...suppliers].filter((s) => s.active).sort((a, b) => a.name.localeCompare(b.name))
 
   async function save() {
     if (reorderPoint.trim() !== '' && Number.isNaN(Number(reorderPoint))) {
@@ -31,6 +39,7 @@ export function ItemOperationalFieldsDialog({ item, onClose }: Props) {
       await updateDoc(doc(itemsCol, item.id), {
         reorderPoint: reorderPoint.trim() === '' ? null : Number(reorderPoint),
         unitOfPurchase: unitOfPurchase.trim() === '' ? null : unitOfPurchase.trim(),
+        defaultSupplierId: defaultSupplierId || null,
       })
       onClose()
     } catch (err) {
@@ -55,7 +64,17 @@ export function ItemOperationalFieldsDialog({ item, onClose }: Props) {
           Unit of purchase
           <input value={unitOfPurchase} onChange={(e) => setUnitOfPurchase(e.target.value)} placeholder="e.g. case of 24" />
         </label>
-        <p className="dialog__hint">Default supplier isn't available yet — that arrives with the suppliers module (M12).</p>
+        <label>
+          Default supplier
+          <select value={defaultSupplierId} onChange={(e) => setDefaultSupplierId(e.target.value)}>
+            <option value="">not set</option>
+            {activeSuppliers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
         {error && <p className="dialog__error">{error}</p>}
         <div className="dialog__actions">
           <button type="button" onClick={onClose}>

@@ -54,6 +54,7 @@ import type {
   CatalogueSyncDoc,
   InventoryMovement,
   ConsumptionEntry,
+  Supplier,
 } from './types'
 
 const firebaseConfig = {
@@ -146,3 +147,5 @@ export const catalogueSyncsCol = typedCollection<CatalogueSyncDoc>('catalogueSyn
 
 export const inventoryMovementsCol = typedCollection<InventoryMovement>('inventoryMovements')
 export const consumptionEntriesCol = typedCollection<ConsumptionEntry>('consumptionEntries')
+
+export const suppliersCol = typedCollection<Supplier>('suppliers')
