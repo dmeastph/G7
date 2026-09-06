@@ -897,3 +897,31 @@ describe('suppliers (M12)', () => {
     await assertSucceeds(getDoc(doc(staffCtx().firestore(), 'suppliers/s1')))
   })
 })
+
+describe('purchaseRequests (M13)', () => {
+  const request = {
+    branchId: '001', businessDayId: null, shiftInstanceId: null, actorId: 'staff-uid', actorName: 'Staff',
+    createdAt: undefined, deviceId: 'd1', userId: 'staff-1', userName: 'Staff',
+    lines: [{ itemId: 'i1', itemName: 'Shin Ramyeon', qty: 5, unit: 'cases' }],
+    neededBy: '2026-09-10', note: '', status: 'pending',
+    decidedBy: null, decidedByName: null, decidedAt: null, decisionNote: '',
+  }
+
+  test('a signed-in user can submit a request; only a manager can decide it', async () => {
+    await assertSucceeds(setDoc(doc(staffCtx().firestore(), 'purchaseRequests/pr1'), { ...request, createdAt: serverTimestamp() }))
+
+    await assertFails(updateDoc(doc(staffCtx().firestore(), 'purchaseRequests/pr1'), { status: 'approved' }))
+    await assertSucceeds(
+      updateDoc(doc(managerCtx().firestore(), 'purchaseRequests/pr1'), {
+        status: 'approved', decidedBy: 'mgr', decidedByName: 'Manager', decidedAt: new Date(), decisionNote: '',
+      }),
+    )
+    await assertFails(deleteDoc(doc(managerCtx().firestore(), 'purchaseRequests/pr1')))
+  })
+
+  test('a request cannot be submitted pre-approved', async () => {
+    await assertFails(
+      setDoc(doc(staffCtx().firestore(), 'purchaseRequests/pr2'), { ...request, status: 'approved', createdAt: serverTimestamp() }),
+    )
+  })
+})

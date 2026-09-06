@@ -701,3 +701,27 @@ export type Supplier = {
   active: boolean
   createdAt: Timestamp
 }
+
+// ---- M13 — purchase requests (docs/18-M13-PURCHASE-REQUESTS.md) ----
+
+export type PurchaseRequestLine = {
+  itemId: string // items/{id} — a real M10 item, never free text
+  itemName: string // snapshot at request time, so a later item rename doesn't rewrite history
+  qty: number
+  unit: string // free text — "cases", "kg", whatever the requester means
+}
+
+// No supplier here on purpose — that's a spending decision M14 makes when
+// building the actual order, not something a requester picks.
+export type PurchaseRequest = OperationalBase & {
+  userId: string
+  userName: string
+  lines: PurchaseRequestLine[]
+  neededBy: string // YYYY-MM-DD
+  note: string
+  status: 'pending' | 'approved' | 'denied'
+  decidedBy: string | null
+  decidedByName: string | null
+  decidedAt: Timestamp | null
+  decisionNote: string
+}

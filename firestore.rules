@@ -540,6 +540,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- purchaseRequests (M13) ----
+    // Identical in shape to leaveRequests: anyone can ask, only a manager
+    // decides. status == 'pending' at create time closes off a client
+    // submitting a request pre-approved (docs/18-M13-PURCHASE-REQUESTS.md).
+    match /purchaseRequests/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if signedIn()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time
+                     && request.resource.data.status == 'pending';
+      allow update: if isManager() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
     // Everything else defaults closed — a new collection needs an explicit
     // rule before it can be written, on purpose.
     match /{document=**} {

@@ -62,7 +62,7 @@ One canonical product list in `g7-ops`, built as a **one-way bridge** from `g7-p
 
 ## M13 · Purchase requests
 
-Staff request items/quantities/need-by date. Approval follows the same role pattern the rest of `g7-ops` already uses (`cash.approve_void`-style permission key, gated in rules not just UI). An approved PR is the only path into M14.
+**Spec written, 2026-09-06 — see `docs/18-M13-PURCHASE-REQUESTS.md`.** Staff request items/quantities/need-by date. Approval follows `leaveRequests`' own already-shipped pattern (anyone can create, only a manager can update — gated in `firestore.rules`, not just the UI). An approved PR is the only path into M14.
 
 ## M14 · Purchase orders
 

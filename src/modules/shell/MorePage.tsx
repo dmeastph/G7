@@ -118,6 +118,9 @@ export function MorePage() {
           <li>
             <Link to="/inventory/consumption">Log consumption</Link>
           </li>
+          <li>
+            <Link to="/purchasing/requests">Purchase requests</Link>
+          </li>
         </ul>
       </section>
       {isManager && (
@@ -147,6 +150,9 @@ export function MorePage() {
             </li>
             <li>
               <Link to="/suppliers">Suppliers</Link>
+            </li>
+            <li>
+              <Link to="/purchasing/approvals">Purchase request approvals</Link>
             </li>
             <li>
               <Link to="/documents-register">Acknowledgment register</Link>
