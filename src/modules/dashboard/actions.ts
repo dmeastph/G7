@@ -12,6 +12,7 @@ import {
   excursionsCol,
   exceptionsCol,
   functions,
+  itemsCol,
   rosterAssignmentsCol,
   shiftInstancesCol,
   shiftTemplatesCol,
@@ -26,6 +27,7 @@ import type {
   ChecklistRun,
   ExceptionRecord,
   Excursion,
+  ItemDoc,
   RosterAssignment,
   ShiftInstance,
   ShiftTemplate,
@@ -42,6 +44,7 @@ export type DashboardData = {
   shiftsShort: number
   certExpiryWindowSet: boolean
   certificationsExpiring: number
+  lowStockItems: (ItemDoc & { id: string })[]
 }
 
 const EMPTY: DashboardData = {
@@ -54,6 +57,7 @@ const EMPTY: DashboardData = {
   shiftsShort: 0,
   certExpiryWindowSet: false,
   certificationsExpiring: 0,
+  lowStockItems: [],
 }
 
 export function useDashboardData(): DashboardData {
@@ -70,6 +74,7 @@ export function useDashboardData(): DashboardData {
   const [shiftTemplates, setShiftTemplates] = useState<(ShiftTemplate & { id: string })[]>([])
   const [roster, setRoster] = useState<(RosterAssignment & { id: string })[]>([])
   const [users, setUsers] = useState<(User & { id: string })[]>([])
+  const [items, setItems] = useState<(ItemDoc & { id: string })[]>([])
 
   useEffect(() => {
     if (!activeBranch) return
@@ -129,6 +134,11 @@ export function useDashboardData(): DashboardData {
     return onSnapshot(q, (snap) => setUsers(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
   }, [activeBranch])
 
+  // items (M10) has no branchId — one shared catalogue, same as CatalogueSyncPage's own query.
+  useEffect(() => {
+    return onSnapshot(itemsCol, (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  }, [])
+
   if (!activeBranch) return EMPTY
 
   const openExceptionsBySeverity: DashboardData['openExceptionsBySeverity'] = { low: 0, medium: 0, high: 0, critical: 0 }
@@ -168,6 +178,10 @@ export function useDashboardData(): DashboardData {
     ).length
   }
 
+  // M11 — an item with no reorderPoint set is never flagged; silence here
+  // means "not configured," not "fine" (docs/16-M11-INVENTORY.md).
+  const lowStockItems = items.filter((i) => i.reorderPoint !== null && i.qtyOnHand <= i.reorderPoint)
+
   return {
     openExceptionsBySeverity,
     missedChecksToday,
@@ -178,6 +192,7 @@ export function useDashboardData(): DashboardData {
     shiftsShort,
     certExpiryWindowSet,
     certificationsExpiring,
+    lowStockItems,
   }
 }
 

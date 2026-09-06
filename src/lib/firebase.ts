@@ -52,6 +52,8 @@ import type {
   TimeEntryDispute,
   ItemDoc,
   CatalogueSyncDoc,
+  InventoryMovement,
+  ConsumptionEntry,
 } from './types'
 
 const firebaseConfig = {
@@ -141,3 +143,6 @@ export const timeEntryDisputesCol = typedCollection<TimeEntryDispute>('timeEntry
 
 export const itemsCol = typedCollection<ItemDoc>('items')
 export const catalogueSyncsCol = typedCollection<CatalogueSyncDoc>('catalogueSyncs')
+
+export const inventoryMovementsCol = typedCollection<InventoryMovement>('inventoryMovements')
+export const consumptionEntriesCol = typedCollection<ConsumptionEntry>('consumptionEntries')

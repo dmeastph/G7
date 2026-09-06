@@ -2,18 +2,21 @@
 // discards write here automatically (see QuarantineDispositionDialog).
 import { useEffect, useState } from 'react'
 import { onSnapshot, query, where } from 'firebase/firestore'
-import { wastageRecordsCol } from '@/lib/firebase'
+import { wastageRecordsCol, itemsCol } from '@/lib/firebase'
 import { useActiveBranch } from '@/lib/branch'
 import { useWriteOperational } from '@/lib/write'
 import { formatCentavos, toMillisSafe } from '@/lib/format'
-import type { WastageRecord } from '@/lib/types'
+import type { WastageRecord, ItemDoc } from '@/lib/types'
 
 type Row = WastageRecord & { id: string }
+type ItemRow = ItemDoc & { id: string }
 
 export function WastageLogPage() {
   const activeBranch = useActiveBranch()
   const { write } = useWriteOperational()
   const [rows, setRows] = useState<Row[]>([])
+  const [items, setItems] = useState<ItemRow[]>([])
+  const [itemId, setItemId] = useState('')
   const [itemName, setItemName] = useState('')
   const [qty, setQty] = useState('')
   const [unit, setUnit] = useState('units')
@@ -28,6 +31,21 @@ export function WastageLogPage() {
     return onSnapshot(q, (snap) => setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
   }, [activeBranch])
 
+  // items (M10) has no branchId — one shared catalogue.
+  useEffect(() => {
+    return onSnapshot(itemsCol, (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  }, [])
+
+  const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name))
+
+  // Picking a real item locks the name to it — a linked wastage entry
+  // shouldn't drift from the catalogue's own name for the same item.
+  function pickItem(id: string) {
+    setItemId(id)
+    const picked = items.find((i) => i.id === id)
+    if (picked) setItemName(picked.name)
+  }
+
   async function submit() {
     if (!itemName.trim() || !qty.trim() || !reason.trim()) {
       setError('Item, quantity and reason are required.')
@@ -39,12 +57,14 @@ export function WastageLogPage() {
       await write('wastageRecords', {
         source: 'manual',
         sourceId: null,
+        itemId: itemId || null,
         itemName: itemName.trim(),
         qty: Number(qty),
         unit,
         estValueCentavos: estValue.trim() === '' ? null : Math.round(Number(estValue) * 100),
         reason: reason.trim(),
       })
+      setItemId('')
       setItemName('')
       setQty('')
       setEstValue('')
@@ -63,9 +83,31 @@ export function WastageLogPage() {
       <h2>Wastage log</h2>
       <section className="card">
         <label>
-          Item
-          <input value={itemName} onChange={(e) => setItemName(e.target.value)} />
+          Item (pick a catalogue item to link this to inventory, optional)
+          <select
+            value={itemId}
+            onChange={(e) => {
+              if (e.target.value) pickItem(e.target.value)
+              else {
+                setItemId('')
+                setItemName('')
+              }
+            }}
+          >
+            <option value="">Type a name instead…</option>
+            {sortedItems.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
         </label>
+        {!itemId && (
+          <label>
+            Item name
+            <input value={itemName} onChange={(e) => setItemName(e.target.value)} />
+          </label>
+        )}
         <label>
           Quantity
           <input value={qty} onChange={(e) => setQty(e.target.value)} />

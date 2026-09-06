@@ -361,6 +361,7 @@ export type WastageRecord = OperationalBase & {
   unit: string
   estValueCentavos: number | null
   reason: string
+  itemId: string | null // M11 — links to items/{id}; null = untracked, same as before M11
 }
 
 export type ReceivingItem = {
@@ -638,6 +639,8 @@ export type ItemDoc = {
   active: boolean
   lastSyncedAt: Timestamp | null // null until the first successful sync
   createdAt: Timestamp
+
+  qtyOnHand: number // M11 — server-maintained only, via onInventoryMovementCreated. Starts at 0.
 }
 
 // One per sync run, not per item — written only by runCatalogueSync
@@ -656,4 +659,27 @@ export type CatalogueSyncDoc = {
   changedCount: number
   missingCount: number
   createdAt: Timestamp
+}
+
+// ---- M11 — inventory (docs/16-M11-INVENTORY.md) ----
+
+// Append-only — never updated or deleted after creation. The one source of
+// truth for "why did stock change." qtyOnHand on ItemDoc is derived from
+// these by onInventoryMovementCreated; never write qtyOnHand directly.
+export type InventoryMovement = OperationalBase & {
+  itemId: string // items/{id} — not sourceItemId
+  delta: number // negative = stock leaving, positive = stock arriving (unused until M15)
+  reason: 'wastage' | 'manual_consumption' | 'receiving' | 'adjustment'
+  sourceCollection: 'wastageRecords' | 'consumptionEntries' | 'receivingRecords' | null
+  sourceId: string | null
+  note: string
+}
+
+// Stock leaving for a reason that isn't wastage and isn't a sale (g7-ops has
+// no sales) — staff meals, samples, internal use. Always requires a real
+// item; unlike WastageRecord there's no legacy free-text behavior to keep.
+export type ConsumptionEntry = OperationalBase & {
+  itemId: string
+  qty: number
+  reason: string
 }

@@ -502,6 +502,31 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // ---- inventoryMovements (M11) ----
+    // Append-only ledger — written only by onWastageRecordCreated /
+    // onConsumptionEntryCreated (Cloud Functions, Admin SDK). No client
+    // write path, including for a manager — the same posture catalogueSyncs
+    // (M10) already takes for a server-owned audit trail.
+    match /inventoryMovements/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create, update, delete: if false;
+    }
+
+    // ---- consumptionEntries (M11) ----
+    // Same tier as wastageRecords — a station device or a manager can log
+    // one; nobody can edit or delete it afterward. itemId is required at
+    // the rules layer, not just the UI, since a movement can't post without
+    // one (docs/16-M11-INVENTORY.md).
+    match /consumptionEntries/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if (isStation() || isManager())
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time
+                     && request.resource.data.itemId is string;
+      allow update, delete: if false;
+    }
+
     // Everything else defaults closed — a new collection needs an explicit
     // rule before it can be written, on purpose.
     match /{document=**} {

@@ -56,6 +56,8 @@ const MyLeaveRequestsPage = lazy(() => import('@/modules/selfservice/MyLeaveRequ
 const LeaveApprovalsPage = lazy(() => import('@/modules/selfservice/LeaveApprovalsPage').then((m) => ({ default: m.LeaveApprovalsPage })))
 const DisputesPage = lazy(() => import('@/modules/selfservice/DisputesPage').then((m) => ({ default: m.DisputesPage })))
 const CatalogueSyncPage = lazy(() => import('@/modules/catalogue/CatalogueSyncPage').then((m) => ({ default: m.CatalogueSyncPage })))
+const InventoryPage = lazy(() => import('@/modules/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
+const LogConsumptionPage = lazy(() => import('@/modules/inventory/LogConsumptionPage').then((m) => ({ default: m.LogConsumptionPage })))
 
 export function App() {
   const auth = useAuth()
@@ -143,6 +145,8 @@ function AuthedShell({ auth }: { auth: Extract<AuthState, { mode: 'managed' | 's
             <Route path="/self/disputes" element={<DisputesPage />} />
             <Route path="/leave/approvals" element={<LeaveApprovalsPage />} />
             <Route path="/catalogue" element={<CatalogueSyncPage />} />
+            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/inventory/consumption" element={<LogConsumptionPage />} />
           </Routes>
         </Suspense>
       </main>

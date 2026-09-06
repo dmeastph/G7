@@ -5,7 +5,7 @@
 // staff PIN — bcrypt happens here, server-side, never in the browser bundle
 // for a PIN being *set* (client-side bcrypt is only used to *verify*).
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
-import { onDocumentUpdated } from 'firebase-functions/v2/firestore'
+import { onDocumentUpdated, onDocumentCreated } from 'firebase-functions/v2/firestore'
 import { defineSecret, defineString } from 'firebase-functions/params'
 import { logger } from 'firebase-functions'
 import { initializeApp } from 'firebase-admin/app'
@@ -426,6 +426,7 @@ async function runCatalogueSync(
       active: true,
       lastSyncedAt: FieldValue.serverTimestamp(),
       createdAt: FieldValue.serverTimestamp(),
+      qtyOnHand: 0, // M11 — a sync never touches stock; new items simply start at 0
     })
   }
   for (const item of diff.changedItems) {
@@ -503,3 +504,85 @@ export const syncCatalogueNow = onCall({ secrets: [catalogueSyncSecret] }, async
   )
   return { ok: true }
 })
+
+// ---- M11 — inventory (docs/16-M11-INVENTORY.md) ----
+
+type InventoryMovementReason = 'wastage' | 'manual_consumption' | 'receiving' | 'adjustment'
+
+/** Stamps an inventoryMovements document from a source record's own
+ *  OperationalBase fields — this runs server-side (Admin SDK), so nothing
+ *  goes through useWriteOperational; the movement carries the same branch/
+ *  shift/actor context as whatever caused it instead. */
+function buildMovement(
+  source: FirebaseFirestore.DocumentData,
+  sourceCollection: 'wastageRecords' | 'consumptionEntries',
+  sourceId: string,
+  itemId: string,
+  delta: number,
+  reason: InventoryMovementReason,
+) {
+  return {
+    itemId,
+    delta,
+    reason,
+    sourceCollection,
+    sourceId,
+    note: '',
+    branchId: source.branchId ?? null,
+    businessDayId: source.businessDayId ?? null,
+    shiftInstanceId: source.shiftInstanceId ?? null,
+    actorId: source.actorId ?? 'unknown',
+    actorName: source.actorName ?? 'unknown',
+    deviceId: source.deviceId ?? 'unknown',
+    createdAt: FieldValue.serverTimestamp(),
+  }
+}
+
+/** The only writer of qtyOnHand, anywhere — a client can never set it
+ *  directly (firestore.rules), and every other Cloud Function only ever
+ *  creates a movement, never touches qtyOnHand itself. A failure here is
+ *  logged, not thrown: the wastage/consumption record that caused this has
+ *  already saved successfully by the time this trigger runs, the same
+ *  "don't retroactively fail an action that already succeeded" posture
+ *  onShiftHandoverAccepted takes for a failed catalogue sync. */
+export const onInventoryMovementCreated = onDocumentCreated(
+  { document: 'inventoryMovements/{movementId}', region: 'asia-southeast1' },
+  async (event) => {
+    const data = event.data?.data()
+    if (!data) return
+    try {
+      await getFirestore().collection('items').doc(data.itemId as string).update({
+        qtyOnHand: FieldValue.increment(data.delta as number),
+      })
+    } catch (err) {
+      logger.error(`onInventoryMovementCreated: failed to apply movement ${event.params.movementId} to item ${data.itemId} — ${err instanceof Error ? err.message : String(err)}`)
+    }
+  },
+)
+
+/** Posts a movement only when a real item was picked — a wastage entry
+ *  logged the old way (free-text itemName, no itemId) behaves exactly as it
+ *  did before M11: no movement, no error. */
+export const onWastageRecordCreated = onDocumentCreated(
+  { document: 'wastageRecords/{wastageId}', region: 'asia-southeast1' },
+  async (event) => {
+    const data = event.data?.data()
+    if (!data || !data.itemId) return
+    await getFirestore()
+      .collection('inventoryMovements')
+      .add(buildMovement(data, 'wastageRecords', event.params.wastageId, data.itemId as string, -(data.qty as number), 'wastage'))
+  },
+)
+
+/** Unlike wastage, a consumption entry always has a real item — enforced in
+ *  firestore.rules, not just the UI — so this always posts a movement. */
+export const onConsumptionEntryCreated = onDocumentCreated(
+  { document: 'consumptionEntries/{entryId}', region: 'asia-southeast1' },
+  async (event) => {
+    const data = event.data?.data()
+    if (!data) return
+    await getFirestore()
+      .collection('inventoryMovements')
+      .add(buildMovement(data, 'consumptionEntries', event.params.entryId, data.itemId as string, -(data.qty as number), 'manual_consumption'))
+  },
+)

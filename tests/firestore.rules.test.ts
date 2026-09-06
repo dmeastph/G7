@@ -819,3 +819,53 @@ describe('catalogueSyncs (M10)', () => {
     await assertFails(getDoc(doc(staffCtx().firestore(), 'catalogueSyncs/s1')))
   })
 })
+
+describe('inventoryMovements (M11)', () => {
+  const movement = {
+    branchId: '001', businessDayId: null, shiftInstanceId: null, actorId: 'staff-1', actorName: 'Staff',
+    createdAt: undefined, deviceId: 'd1', itemId: 'i1', delta: -2, reason: 'wastage',
+    sourceCollection: 'wastageRecords', sourceId: 'w1', note: '',
+  }
+
+  test('no client, including a manager, can write a movement — Admin SDK only', async () => {
+    await assertFails(setDoc(doc(managerCtx().firestore(), 'inventoryMovements/m1'), { ...movement, createdAt: serverTimestamp() }))
+
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'inventoryMovements/m1'), { ...movement, createdAt: serverTimestamp() })
+    })
+    await assertFails(updateDoc(doc(managerCtx().firestore(), 'inventoryMovements/m1'), { delta: -5 }))
+    await assertFails(deleteDoc(doc(managerCtx().firestore(), 'inventoryMovements/m1')))
+  })
+
+  test('a same-branch signed-in user can read a movement; a different branch cannot', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'inventoryMovements/m1'), { ...movement, createdAt: serverTimestamp() })
+    })
+    await assertSucceeds(getDoc(doc(staffCtx().firestore(), 'inventoryMovements/m1')))
+    const otherBranch = testEnv.authenticatedContext('cashier-002', { role: 'cashier', branchId: '002' })
+    await assertFails(getDoc(doc(otherBranch.firestore(), 'inventoryMovements/m1')))
+  })
+})
+
+describe('consumptionEntries (M11)', () => {
+  const entry = {
+    branchId: '001', businessDayId: null, shiftInstanceId: null, actorId: 'staff-1', actorName: 'Staff',
+    createdAt: serverTimestamp(), deviceId: 'd1', itemId: 'i1', qty: 3, reason: 'staff meal',
+  }
+
+  test('a station account or manager can log consumption with a real item; nobody can edit or delete it', async () => {
+    await assertSucceeds(setDoc(doc(stationCtx().firestore(), 'consumptionEntries/c1'), entry))
+
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'consumptionEntries/c2'), { ...entry, createdAt: new Date() })
+    })
+    await assertFails(updateDoc(doc(managerCtx().firestore(), 'consumptionEntries/c2'), { qty: 5 }))
+    await assertFails(deleteDoc(doc(managerCtx().firestore(), 'consumptionEntries/c2')))
+  })
+
+  test('a cashier cannot log consumption; a missing itemId is rejected even for a station account', async () => {
+    await assertFails(setDoc(doc(staffCtx().firestore(), 'consumptionEntries/c3'), entry))
+    const { itemId: _itemId, ...withoutItemId } = entry
+    await assertFails(setDoc(doc(stationCtx().firestore(), 'consumptionEntries/c4'), withoutItemId))
+  })
+})

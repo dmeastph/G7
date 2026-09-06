@@ -111,6 +111,21 @@ export function DashboardPage() {
         </section>
       )}
 
+      <section className="card">
+        <h2>Low stock</h2>
+        {data.lowStockItems.length === 0 ? (
+          <p className="empty-state">Nothing to reorder right now.</p>
+        ) : (
+          <ul>
+            {data.lowStockItems.map((i) => (
+              <li key={i.id}>
+                {i.name} — {i.qtyOnHand} on hand, reorder point {i.reorderPoint}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {isManager && (
         <section className="card">
           <h2>Close business day</h2>

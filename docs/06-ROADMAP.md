@@ -54,7 +54,7 @@ One canonical product list in `g7-ops`, built as a **one-way bridge** from `g7-p
 
 ## M11 · Inventory
 
-Stock-on-hand ledger keyed to the M10 item master. Receiving (M15) posts positive movements; wastage (already logged in M2) and manual consumption entries post negative ones. Reorder point per item, low-stock surfaced on the dashboard (M8) and in reports (M16).
+**Spec written, 2026-09-06 — see `docs/16-M11-INVENTORY.md`.** Stock-on-hand ledger keyed to the M10 item master. Receiving (M15) posts positive movements; wastage (already logged in M2) and manual consumption entries post negative ones. Reorder point per item, low-stock surfaced on the dashboard (M8) and in reports (M16).
 
 ## M12 · Suppliers
 
