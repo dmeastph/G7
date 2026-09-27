@@ -724,4 +724,30 @@ export type PurchaseRequest = OperationalBase & {
   decidedByName: string | null
   decidedAt: Timestamp | null
   decisionNote: string
+  linkedPurchaseOrderId: string | null // M14 — set once a PO is created from this request; null = not yet ordered
+}
+
+// ---- M14 — purchase orders (docs/19-M14-PURCHASE-ORDERS.md) ----
+
+export type PurchaseOrderLine = {
+  itemId: string // items/{id} — a real M10 item, never free text
+  itemName: string // snapshot at order time
+  qtyOrdered: number
+  unitCostCentavos: number
+}
+
+export type PurchaseOrderStatus = 'draft' | 'sent' | 'confirmed' | 'partially_received' | 'received' | 'cancelled'
+
+// Lines, supplier and cost are only editable while status === 'draft' — once
+// sent, this is a real commitment, not a running calculation. totalCentavos
+// is computed once at save time, same reasoning PurchaseRequestLine.itemName
+// is frozen rather than joined live against the current item name.
+export type PurchaseOrder = OperationalBase & {
+  supplierId: string
+  supplierName: string
+  lines: PurchaseOrderLine[]
+  totalCentavos: number
+  status: PurchaseOrderStatus
+  sourcePurchaseRequestId: string | null // traceability only — see docs/19-M14-PURCHASE-ORDERS.md
+  cancelledReason: string | null
 }

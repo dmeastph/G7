@@ -20,6 +20,16 @@ service cloud.firestore {
     // narrower than isManager(), which also includes ops_head
     // (docs/02-DATA-MODEL.md quarantineLots).
     function canReleaseQuarantine() { return hasRole('store_manager') || hasRole('owner'); }
+    // The M14 purchase-order lifecycle — status only ever moves forward.
+    // 'draft'->'draft' is included so an in-progress edit (lines, supplier,
+    // cost) isn't itself blocked by this function; the update rule's own
+    // affectedKeys() check is what actually locks a PO once it leaves draft.
+    function isValidPoStatusTransition(before, after) {
+      return (before == 'draft' && (after == 'draft' || after == 'sent' || after == 'cancelled'))
+        || (before == 'sent' && (after == 'confirmed' || after == 'cancelled'))
+        || (before == 'confirmed' && (after == 'partially_received' || after == 'cancelled'))
+        || (before == 'partially_received' && after == 'received');
+    }
 
     // ---- branches ----
     match /branches/{branchId} {
@@ -552,6 +562,29 @@ service cloud.firestore {
                      && request.resource.data.createdAt == request.time
                      && request.resource.data.status == 'pending';
       allow update: if isManager() && sameBranch(resource.data.branchId);
+      allow delete: if false;
+    }
+
+    // ---- purchaseOrders (M14) ----
+    // Manager-only to create, even standalone — unlike purchaseRequests,
+    // where anyone can flag a need, nobody but a manager commits the
+    // business to an actual spend. Read is broader (any signed-in user) so
+    // a station account preparing to receive a delivery can see what was
+    // actually ordered, ahead of M15's three-way match.
+    match /purchaseOrders/{id} {
+      allow read: if signedIn() && sameBranch(resource.data.branchId);
+      allow create: if isManager()
+                     && sameBranch(request.resource.data.branchId)
+                     && request.resource.data.actorId is string
+                     && request.resource.data.createdAt == request.time
+                     && request.resource.data.status == 'draft';
+      allow update: if isManager()
+                     && sameBranch(resource.data.branchId)
+                     && isValidPoStatusTransition(resource.data.status, request.resource.data.status)
+                     && (
+                          (resource.data.status == 'draft' && request.resource.data.status == 'draft')
+                          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledReason'])
+                        );
       allow delete: if false;
     }
 

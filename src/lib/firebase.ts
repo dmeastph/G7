@@ -56,6 +56,7 @@ import type {
   ConsumptionEntry,
   Supplier,
   PurchaseRequest,
+  PurchaseOrder,
 } from './types'
 
 const firebaseConfig = {
@@ -152,3 +153,4 @@ export const consumptionEntriesCol = typedCollection<ConsumptionEntry>('consumpt
 export const suppliersCol = typedCollection<Supplier>('suppliers')
 
 export const purchaseRequestsCol = typedCollection<PurchaseRequest>('purchaseRequests')
+export const purchaseOrdersCol = typedCollection<PurchaseOrder>('purchaseOrders')

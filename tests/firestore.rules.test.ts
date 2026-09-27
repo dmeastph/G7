@@ -925,3 +925,73 @@ describe('purchaseRequests (M13)', () => {
     )
   })
 })
+
+describe('purchaseOrders (M14)', () => {
+  const line = { itemId: 'i1', itemName: 'Shin Ramyeon', qtyOrdered: 5, unitCostCentavos: 15000 }
+  const po = {
+    branchId: '001', businessDayId: null, shiftInstanceId: null, actorId: 'mgr-uid', actorName: 'Manager',
+    createdAt: undefined, deviceId: 'd1', supplierId: 's1', supplierName: 'Acme Produce',
+    lines: [line], totalCentavos: 75000, status: 'draft', sourcePurchaseRequestId: null, cancelledReason: null,
+  }
+
+  async function seedPo(id: string, overrides: Partial<typeof po> = {}) {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `purchaseOrders/${id}`), { ...po, ...overrides, createdAt: serverTimestamp() })
+    })
+  }
+
+  test('a manager can create a draft PO; a cashier cannot; it cannot be created past draft', async () => {
+    await assertSucceeds(setDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { ...po, createdAt: serverTimestamp() }))
+    await assertFails(setDoc(doc(staffCtx().firestore(), 'purchaseOrders/po2'), { ...po, createdAt: serverTimestamp() }))
+    await assertFails(
+      setDoc(doc(managerCtx().firestore(), 'purchaseOrders/po3'), { ...po, status: 'sent', createdAt: serverTimestamp() }),
+    )
+  })
+
+  test('a manager can edit lines while draft; a cashier cannot advance status', async () => {
+    await seedPo('po1')
+    await assertSucceeds(
+      updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { lines: [{ ...line, qtyOrdered: 10 }], totalCentavos: 150000 }),
+    )
+    await assertFails(updateDoc(doc(staffCtx().firestore(), 'purchaseOrders/po1'), { status: 'sent' }))
+  })
+
+  test('status cannot skip a stage or move backward', async () => {
+    await seedPo('po1')
+    await assertFails(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'confirmed' })) // skips 'sent'
+    await assertSucceeds(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'sent' }))
+    await assertFails(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'draft' })) // backward
+  })
+
+  test('lines are frozen once status leaves draft', async () => {
+    await seedPo('po1', { status: 'sent' })
+    await assertFails(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { lines: [] }))
+  })
+
+  test('the full forward sequence succeeds one step at a time, ending at received', async () => {
+    await seedPo('po1', { status: 'confirmed' })
+    await assertSucceeds(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'partially_received' }))
+    await assertFails(
+      updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'cancelled', cancelledReason: 'too late' }),
+    )
+    await assertSucceeds(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'received' }))
+    await assertFails(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'draft' }))
+  })
+
+  test('cancelling works from draft, sent or confirmed but not after', async () => {
+    await seedPo('po4')
+    await assertSucceeds(
+      updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po4'), { status: 'cancelled', cancelledReason: 'supplier out of stock' }),
+    )
+
+    await seedPo('po5', { status: 'partially_received' })
+    await assertFails(
+      updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po5'), { status: 'cancelled', cancelledReason: 'too late' }),
+    )
+  })
+
+  test('no client, including a manager, can delete a purchase order', async () => {
+    await seedPo('po1')
+    await assertFails(deleteDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1')))
+  })
+})

@@ -155,6 +155,9 @@ export function MorePage() {
               <Link to="/purchasing/approvals">Purchase request approvals</Link>
             </li>
             <li>
+              <Link to="/purchasing/orders">Purchase orders</Link>
+            </li>
+            <li>
               <Link to="/documents-register">Acknowledgment register</Link>
             </li>
             <li>

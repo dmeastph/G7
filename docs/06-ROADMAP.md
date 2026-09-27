@@ -66,7 +66,7 @@ One canonical product list in `g7-ops`, built as a **one-way bridge** from `g7-p
 
 ## M14 · Purchase orders
 
-Created from an approved PR (or standalone, manager-only), against a real supplier (M12), with per-line quantity and unit cost. Status lifecycle: draft → sent → confirmed → partially received → received → cancelled. `poId` is the join key M15 needs to close the loop.
+**Spec written, 2026-09-06 — see `docs/19-M14-PURCHASE-ORDERS.md`.** Created from an approved PR (or standalone, manager-only), against a real supplier (M12), with per-line quantity and unit cost. Status lifecycle: draft → sent → confirmed → partially received → received → cancelled. `poId` is the join key M15 needs to close the loop.
 
 ## M15 · Receiving becomes a real three-way match
 
