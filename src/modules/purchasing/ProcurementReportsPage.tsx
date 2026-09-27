@@ -3,8 +3,9 @@
 // DimensionTabs shape. Every dimension is a pure function from
 // lib/procurementReports.ts — this component only subscribes and renders.
 import { useEffect, useState } from 'react'
-import { onSnapshot } from 'firebase/firestore'
+import { onSnapshot, query, where } from 'firebase/firestore'
 import { itemsCol, purchaseOrdersCol } from '@/lib/firebase'
+import { useActiveBranch } from '@/lib/branch'
 import { useAuth } from '@/lib/auth'
 import { formatCentavos } from '@/lib/format'
 import {
@@ -26,14 +27,21 @@ const TABS: { key: Dimension; label: string }[] = [
 
 export function ProcurementReportsPage() {
   const auth = useAuth()
+  const activeBranch = useActiveBranch()
   const isManager = auth.claims?.role === 'store_manager' || auth.claims?.role === 'owner' || auth.claims?.role === 'ops_head'
   const [dimension, setDimension] = useState<Dimension>('open')
   const [orders, setOrders] = useState<(PurchaseOrder & { id: string })[]>([])
   const [items, setItems] = useState<(ItemDoc & { id: string })[]>([])
 
+  // purchaseOrders' own rule requires sameBranch(resource.data.branchId) —
+  // same fix as PurchaseOrdersListPage, for the same reason (confirmed
+  // live during the M10-M16 system review: an unfiltered list query here
+  // is rejected outright, not just filtered).
   useEffect(() => {
-    return onSnapshot(purchaseOrdersCol, (snap) => setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
-  }, [])
+    if (!activeBranch) return
+    const q = query(purchaseOrdersCol, where('branchId', '==', activeBranch.branchId))
+    return onSnapshot(q, (snap) => setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  }, [activeBranch])
 
   useEffect(() => {
     return onSnapshot(itemsCol, (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))

@@ -45,14 +45,21 @@ export function ReceivingLogPage() {
     return onSnapshot(q, (snap) => setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
   }, [activeBranch])
 
-  // suppliers (M12) and purchaseOrders (M14) have no branchId — shared lists, same as items (M10).
+  // suppliers (M12) has no branchId — a shared list, same as items (M10).
   useEffect(() => {
     return onSnapshot(suppliersCol, (snap) => setSuppliers(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
   }, [])
 
+  // purchaseOrders (M14) DOES carry a branchId (it extends OperationalBase)
+  // and its own rule requires sameBranch(resource.data.branchId) — this was
+  // originally left unfiltered on the mistaken assumption it was shared
+  // like suppliers/items; fixed during the M10-M16 system review after
+  // confirming live that an unfiltered query here is rejected outright.
   useEffect(() => {
-    return onSnapshot(purchaseOrdersCol, (snap) => setPurchaseOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
-  }, [])
+    if (!activeBranch) return
+    const q = query(purchaseOrdersCol, where('branchId', '==', activeBranch.branchId))
+    return onSnapshot(q, (snap) => setPurchaseOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  }, [activeBranch])
 
   const activeSuppliers = [...suppliers].filter((s) => s.active).sort((a, b) => a.name.localeCompare(b.name))
   const awaitingDelivery = purchaseOrders.filter((po) => AWAITING_DELIVERY.has(po.status))

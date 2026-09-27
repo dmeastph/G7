@@ -3,8 +3,9 @@
 // need a station account preparing to receive a delivery to see this).
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { onSnapshot } from 'firebase/firestore'
+import { onSnapshot, query, where } from 'firebase/firestore'
 import { purchaseOrdersCol } from '@/lib/firebase'
+import { useActiveBranch } from '@/lib/branch'
 import { useAuth } from '@/lib/auth'
 import { formatCentavos } from '@/lib/format'
 import type { PurchaseOrder } from '@/lib/types'
@@ -14,13 +15,22 @@ type Row = PurchaseOrder & { id: string }
 
 export function PurchaseOrdersListPage() {
   const auth = useAuth()
+  const activeBranch = useActiveBranch()
   const isManager = auth.claims?.role === 'store_manager' || auth.claims?.role === 'owner' || auth.claims?.role === 'ops_head'
   const [rows, setRows] = useState<Row[]>([])
   const [creating, setCreating] = useState(false)
 
+  // purchaseOrders' own rule requires sameBranch(resource.data.branchId) —
+  // this was an unfiltered onSnapshot on the whole collection, which
+  // Firestore rejects outright for the same reason as the other three
+  // fixes in this batch. Confirmed live: neither a newly created PO nor a
+  // deletion ever reflected here, even surviving a hard refresh, because
+  // the listener never had a working subscription in the first place.
   useEffect(() => {
-    return onSnapshot(purchaseOrdersCol, (snap) => setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
-  }, [])
+    if (!activeBranch) return
+    const q = query(purchaseOrdersCol, where('branchId', '==', activeBranch.branchId))
+    return onSnapshot(q, (snap) => setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  }, [activeBranch])
 
   const sorted = [...rows].sort((a, b) => b.id.localeCompare(a.id))
 
