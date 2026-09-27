@@ -87,6 +87,7 @@ export function PurchaseOrderDetailPage() {
       <h2>{po.supplierName}</h2>
       <p>
         Status: {po.status.replace('_', ' ')} — Total: {formatCentavos(po.totalCentavos)}
+        {po.expectedDeliveryDate && ` — Expected ${po.expectedDeliveryDate}`}
       </p>
       {po.status === 'cancelled' && po.cancelledReason && <p className="dialog__error">Cancelled: {po.cancelledReason}</p>}
 

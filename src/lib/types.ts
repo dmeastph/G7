@@ -753,4 +753,6 @@ export type PurchaseOrder = OperationalBase & {
   status: PurchaseOrderStatus
   sourcePurchaseRequestId: string | null // traceability only — see docs/19-M14-PURCHASE-ORDERS.md
   cancelledReason: string | null
+  expectedDeliveryDate: string | null // M16 — YYYY-MM-DD, optional, set on the create/edit-while-draft form
+  receivedAt: Timestamp | null // M16 — stamped by onReceivingRecordCreated (M15) the moment status becomes 'received'
 }

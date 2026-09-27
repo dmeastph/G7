@@ -644,7 +644,9 @@ export const onReceivingRecordCreated = onDocumentCreated(
         const anyReceived = lines.some((l) => l.qtyReceivedSoFar > 0)
         const status = allComplete ? 'received' : anyReceived ? 'partially_received' : po.status
 
-        tx.update(poRef, { lines, status })
+        // M16 — the one place receivedAt is ever set; "on time" (docs/21-M16-
+        // PROCUREMENT-REPORTS.md) has nothing to compare against without it.
+        tx.update(poRef, allComplete ? { lines, status, receivedAt: FieldValue.serverTimestamp() } : { lines, status })
       })
     } catch (err) {
       logger.error(

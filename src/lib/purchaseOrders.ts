@@ -17,6 +17,7 @@ export function usePurchaseOrderActions() {
     supplierName: string
     lines: PurchaseOrderLine[]
     sourcePurchaseRequestId: string | null
+    expectedDeliveryDate: string | null
   }): Promise<string> {
     const totalCentavos = input.lines.reduce((sum, l) => sum + l.qtyOrdered * l.unitCostCentavos, 0)
     const poId = await write('purchaseOrders', {
@@ -27,6 +28,8 @@ export function usePurchaseOrderActions() {
       status: 'draft',
       sourcePurchaseRequestId: input.sourcePurchaseRequestId,
       cancelledReason: null,
+      expectedDeliveryDate: input.expectedDeliveryDate,
+      receivedAt: null,
     })
     if (input.sourcePurchaseRequestId) {
       await updateDoc(doc(purchaseRequestsCol, input.sourcePurchaseRequestId), { linkedPurchaseOrderId: poId })
@@ -41,7 +44,7 @@ export function usePurchaseOrderActions() {
  *  this call once status has moved on. */
 export async function updateDraftPurchaseOrder(
   id: string,
-  patch: { supplierId: string; supplierName: string; lines: PurchaseOrderLine[] },
+  patch: { supplierId: string; supplierName: string; lines: PurchaseOrderLine[]; expectedDeliveryDate: string | null },
 ): Promise<void> {
   const totalCentavos = patch.lines.reduce((sum, l) => sum + l.qtyOrdered * l.unitCostCentavos, 0)
   await updateDoc(doc(purchaseOrdersCol, id), { ...patch, totalCentavos } as UpdateData<PurchaseOrder>)

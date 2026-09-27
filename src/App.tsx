@@ -71,6 +71,9 @@ const PurchaseOrdersListPage = lazy(() =>
 const PurchaseOrderDetailPage = lazy(() =>
   import('@/modules/purchasing/PurchaseOrderDetailPage').then((m) => ({ default: m.PurchaseOrderDetailPage })),
 )
+const ProcurementReportsPage = lazy(() =>
+  import('@/modules/purchasing/ProcurementReportsPage').then((m) => ({ default: m.ProcurementReportsPage })),
+)
 
 export function App() {
   const auth = useAuth()
@@ -165,6 +168,7 @@ function AuthedShell({ auth }: { auth: Extract<AuthState, { mode: 'managed' | 's
             <Route path="/purchasing/approvals" element={<PurchaseRequestApprovalsPage />} />
             <Route path="/purchasing/orders" element={<PurchaseOrdersListPage />} />
             <Route path="/purchasing/orders/:id" element={<PurchaseOrderDetailPage />} />
+            <Route path="/purchasing/reports" element={<ProcurementReportsPage />} />
           </Routes>
         </Suspense>
       </main>

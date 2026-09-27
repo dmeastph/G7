@@ -22,6 +22,7 @@ import { useActiveBranch } from '@/lib/branch'
 import { useCurrentBusinessDayId } from '@/lib/businessDay'
 import { useParam } from '@/lib/params'
 import { toMillisSafe } from '@/lib/format'
+import { computeLowStockItems, type LowStockItem } from '@/lib/procurementReports'
 import type {
   CashCloseCount,
   ChecklistRun,
@@ -44,7 +45,7 @@ export type DashboardData = {
   shiftsShort: number
   certExpiryWindowSet: boolean
   certificationsExpiring: number
-  lowStockItems: (ItemDoc & { id: string })[]
+  lowStockItems: LowStockItem[]
 }
 
 const EMPTY: DashboardData = {
@@ -178,9 +179,9 @@ export function useDashboardData(): DashboardData {
     ).length
   }
 
-  // M11 — an item with no reorderPoint set is never flagged; silence here
-  // means "not configured," not "fine" (docs/16-M11-INVENTORY.md).
-  const lowStockItems = items.filter((i) => i.reorderPoint !== null && i.qtyOnHand <= i.reorderPoint)
+  // M16 — shared with the Reports screen's own Low stock tab, so the two
+  // can never silently drift apart (docs/21-M16-PROCUREMENT-REPORTS.md).
+  const lowStockItems = computeLowStockItems(items)
 
   return {
     openExceptionsBySeverity,

@@ -28,6 +28,7 @@ export function PurchaseOrderFormDialog({ existing, onClose }: Props) {
 
   const [supplierId, setSupplierId] = useState(existing?.supplierId ?? '')
   const [sourceRequestId, setSourceRequestId] = useState('')
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(existing?.expectedDeliveryDate ?? '')
   const [lines, setLines] = useState<LineDraft[]>(
     existing ? existing.lines.map((l) => ({ itemId: l.itemId, qty: String(l.qtyOrdered), unitCost: String(l.unitCostCentavos / 100) })) : [emptyLine()],
   )
@@ -105,6 +106,7 @@ export function PurchaseOrderFormDialog({ existing, onClose }: Props) {
           supplierId,
           supplierName: supplier?.name ?? existing.supplierName,
           lines: poLines,
+          expectedDeliveryDate: expectedDeliveryDate || null,
         })
       } else {
         await createPurchaseOrder({
@@ -112,6 +114,7 @@ export function PurchaseOrderFormDialog({ existing, onClose }: Props) {
           supplierName: supplier?.name ?? '',
           lines: poLines,
           sourcePurchaseRequestId: sourceRequestId || null,
+          expectedDeliveryDate: expectedDeliveryDate || null,
         })
       }
       onClose()
@@ -151,6 +154,11 @@ export function PurchaseOrderFormDialog({ existing, onClose }: Props) {
               </option>
             ))}
           </select>
+        </label>
+
+        <label>
+          Expected delivery date (optional)
+          <input type="date" value={expectedDeliveryDate} onChange={(e) => setExpectedDeliveryDate(e.target.value)} />
         </label>
 
         <p className="dialog__hint">Lines</p>

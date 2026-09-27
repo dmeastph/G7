@@ -734,3 +734,22 @@ button:disabled {
     padding: 1.5rem;
   }
 }
+
+/* Reports (M16) — a tab row over the reporting pattern g7-pos's own
+   ReportsPage already ships. */
+.reports-page__tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.reports-page__tab {
+  min-height: 36px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.9rem;
+}
+.reports-page__tab--active {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--accent);
+}
