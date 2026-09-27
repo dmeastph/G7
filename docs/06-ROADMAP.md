@@ -70,7 +70,7 @@ One canonical product list in `g7-ops`, built as a **one-way bridge** from `g7-p
 
 ## M15 · Receiving becomes a real three-way match
 
-Extends the *existing* `ReceivingLogPage` (M2) rather than replacing it. "Quantity ordered" per line comes from the referenced PO instead of being hand-typed; a completed delivery closes out the matching PO line(s) and posts a receipt into M11's inventory ledger automatically. A receiving record with no PO reference still works exactly as it does today — this is additive, not a breaking change to a screen already in daily use.
+**Spec written, 2026-09-27 — see `docs/20-M15-RECEIVING-THREE-WAY-MATCH.md`.** Extends the *existing* `ReceivingLogPage` (M2) rather than replacing it. "Quantity ordered" per line comes from the referenced PO instead of being hand-typed; a completed delivery closes out the matching PO line(s) and posts a receipt into M11's inventory ledger automatically. A receiving record with no PO reference still works exactly as it does today — this is additive, not a breaking change to a screen already in daily use.
 
 ## M16 · Procurement reports
 

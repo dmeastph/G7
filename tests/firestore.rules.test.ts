@@ -927,7 +927,7 @@ describe('purchaseRequests (M13)', () => {
 })
 
 describe('purchaseOrders (M14)', () => {
-  const line = { itemId: 'i1', itemName: 'Shin Ramyeon', qtyOrdered: 5, unitCostCentavos: 15000 }
+  const line = { itemId: 'i1', itemName: 'Shin Ramyeon', qtyOrdered: 5, unitCostCentavos: 15000, qtyReceivedSoFar: 0 }
   const po = {
     branchId: '001', businessDayId: null, shiftInstanceId: null, actorId: 'mgr-uid', actorName: 'Manager',
     createdAt: undefined, deviceId: 'd1', supplierId: 's1', supplierName: 'Acme Produce',
@@ -968,14 +968,16 @@ describe('purchaseOrders (M14)', () => {
     await assertFails(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { lines: [] }))
   })
 
-  test('the full forward sequence succeeds one step at a time, ending at received', async () => {
+  // docs/20-M15-RECEIVING-THREE-WAY-MATCH.md tightens this further: even a
+  // manager can no longer reach 'partially_received' or 'received' by a
+  // direct client write — only onReceivingRecordCreated (Admin SDK, which
+  // bypasses this rule entirely) can move a PO into either state now.
+  test('a client, including a manager, can never set partially_received or received directly', async () => {
     await seedPo('po1', { status: 'confirmed' })
-    await assertSucceeds(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'partially_received' }))
-    await assertFails(
-      updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'cancelled', cancelledReason: 'too late' }),
-    )
-    await assertSucceeds(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'received' }))
-    await assertFails(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'draft' }))
+    await assertFails(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po1'), { status: 'partially_received' }))
+
+    await seedPo('po2', { status: 'partially_received' })
+    await assertFails(updateDoc(doc(managerCtx().firestore(), 'purchaseOrders/po2'), { status: 'received' }))
   })
 
   test('cancelling works from draft, sent or confirmed but not after', async () => {

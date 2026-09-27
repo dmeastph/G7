@@ -92,6 +92,11 @@ export function PurchaseOrderFormDialog({ existing, onClose }: Props) {
           itemName: item?.name ?? l.itemId,
           qtyOrdered: Number(l.qty),
           unitCostCentavos: Math.round(Number(l.unitCost) * 100),
+          // A PO can only be edited while still 'draft' (firestore.rules),
+          // and receiving only ever happens against a sent-or-later PO — so
+          // this is always 0 here, whether creating fresh or re-saving an
+          // in-progress draft (docs/20-M15-RECEIVING-THREE-WAY-MATCH.md).
+          qtyReceivedSoFar: 0,
         }
       })
 

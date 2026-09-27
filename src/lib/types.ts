@@ -369,6 +369,7 @@ export type ReceivingItem = {
   qtyOrdered: number
   qtyReceived: number
   condition: 'ok' | 'damaged' | 'short' | 'wrong_item'
+  itemId: string | null // M15 — links to items/{id}; null = untracked, same as before M15
 }
 
 export type ReceivingRecord = OperationalBase & {
@@ -379,6 +380,7 @@ export type ReceivingRecord = OperationalBase & {
   discrepancyNoted: boolean
   discrepancyNote: string
   supplierId: string | null // M12 — links to suppliers/{id}; null = free-text supplier only, same as before M12
+  purchaseOrderId: string | null // M15 — links to purchaseOrders/{id}; null = not linked, same as before M15
 }
 
 // ---- M3 — time, roster and certification (docs/08-M3-TIME-ROSTER-CERTIFICATION.md) ----
@@ -734,6 +736,7 @@ export type PurchaseOrderLine = {
   itemName: string // snapshot at order time
   qtyOrdered: number
   unitCostCentavos: number
+  qtyReceivedSoFar: number // M15 — server-maintained only, via onReceivingRecordCreated. Starts at 0.
 }
 
 export type PurchaseOrderStatus = 'draft' | 'sent' | 'confirmed' | 'partially_received' | 'received' | 'cancelled'

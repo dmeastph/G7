@@ -578,9 +578,15 @@ service cloud.firestore {
                      && request.resource.data.actorId is string
                      && request.resource.data.createdAt == request.time
                      && request.resource.data.status == 'draft';
+      // 'partially_received' and 'received' are deliberately absent from
+      // the allowed values below (docs/20-M15-RECEIVING-THREE-WAY-MATCH.md)
+      // — only onReceivingRecordCreated (Admin SDK, bypasses this rule
+      // entirely) can move a PO into either state, since a real delivery
+      // is the only thing that should be able to say so.
       allow update: if isManager()
                      && sameBranch(resource.data.branchId)
                      && isValidPoStatusTransition(resource.data.status, request.resource.data.status)
+                     && request.resource.data.status in ['draft', 'sent', 'confirmed', 'cancelled']
                      && (
                           (resource.data.status == 'draft' && request.resource.data.status == 'draft')
                           || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledReason'])

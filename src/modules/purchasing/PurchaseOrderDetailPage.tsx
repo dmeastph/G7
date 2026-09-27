@@ -2,6 +2,9 @@
 // the controls to advance status forward or cancel. The lifecycle only
 // ever moves forward — firestore.rules rejects anything else, this page
 // just doesn't offer a button for a transition that isn't valid right now.
+// docs/20-M15-RECEIVING-THREE-WAY-MATCH.md — 'partially_received' and
+// 'received' are no longer manual buttons at all: only a real delivery,
+// via onReceivingRecordCreated, can move a PO into either state now.
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, onSnapshot } from 'firebase/firestore'
@@ -14,11 +17,11 @@ import { PurchaseOrderFormDialog } from './PurchaseOrderFormDialog'
 
 // The one place this forward-only sequence is spelled out for the UI —
 // firestore.rules' isValidPoStatusTransition is the actual enforcement.
+// 'partially_received' and 'received' are deliberately absent — see the
+// M15 note above.
 const NEXT_STATUS: Partial<Record<PurchaseOrderStatus, PurchaseOrderStatus>> = {
   draft: 'sent',
   sent: 'confirmed',
-  confirmed: 'partially_received',
-  partially_received: 'received',
 }
 
 const CANCELLABLE_FROM: PurchaseOrderStatus[] = ['draft', 'sent', 'confirmed']
@@ -93,6 +96,7 @@ export function PurchaseOrderDetailPage() {
             <tr>
               <th>Item</th>
               <th>Qty</th>
+              <th>Received</th>
               <th>Unit cost</th>
               <th>Line total</th>
             </tr>
@@ -102,6 +106,7 @@ export function PurchaseOrderDetailPage() {
               <tr key={i}>
                 <td>{l.itemName}</td>
                 <td>{l.qtyOrdered}</td>
+                <td>{l.qtyReceivedSoFar} / {l.qtyOrdered}</td>
                 <td>{formatCentavos(l.unitCostCentavos)}</td>
                 <td>{formatCentavos(l.qtyOrdered * l.unitCostCentavos)}</td>
               </tr>

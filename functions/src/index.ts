@@ -515,7 +515,7 @@ type InventoryMovementReason = 'wastage' | 'manual_consumption' | 'receiving' | 
  *  shift/actor context as whatever caused it instead. */
 function buildMovement(
   source: FirebaseFirestore.DocumentData,
-  sourceCollection: 'wastageRecords' | 'consumptionEntries',
+  sourceCollection: 'wastageRecords' | 'consumptionEntries' | 'receivingRecords',
   sourceId: string,
   itemId: string,
   delta: number,
@@ -584,5 +584,72 @@ export const onConsumptionEntryCreated = onDocumentCreated(
     await getFirestore()
       .collection('inventoryMovements')
       .add(buildMovement(data, 'consumptionEntries', event.params.entryId, data.itemId as string, -(data.qty as number), 'manual_consumption'))
+  },
+)
+
+// ---- M15 — receiving becomes a real three-way match (docs/20-M15-RECEIVING-THREE-WAY-MATCH.md) ----
+
+type ReceivingItemDoc = { itemId: string | null; qtyReceived: number }
+type PurchaseOrderLineDoc = { itemId: string; qtyOrdered: number; qtyReceivedSoFar: number }
+
+/** Every linked line posts into inventory regardless of whether a PO is
+ *  involved — the PO link (below) only matters for closing out an order.
+ *  An unlinked line (itemId null) behaves exactly as it did before M15:
+ *  no movement, no error. */
+export const onReceivingRecordCreated = onDocumentCreated(
+  { document: 'receivingRecords/{receivingId}', region: 'asia-southeast1' },
+  async (event) => {
+    const data = event.data?.data()
+    if (!data) return
+    const db = getFirestore()
+    const receivedItems = (data.items as ReceivingItemDoc[] | undefined) ?? []
+
+    for (const line of receivedItems) {
+      if (!line.itemId) continue
+      await db
+        .collection('inventoryMovements')
+        .add(buildMovement(data, 'receivingRecords', event.params.receivingId, line.itemId, line.qtyReceived, 'receiving'))
+    }
+
+    const purchaseOrderId = data.purchaseOrderId as string | null
+    if (!purchaseOrderId) return
+
+    try {
+      await db.runTransaction(async (tx) => {
+        const poRef = db.collection('purchaseOrders').doc(purchaseOrderId)
+        const poSnap = await tx.get(poRef)
+        if (!poSnap.exists) return
+        const po = poSnap.data() as { lines: PurchaseOrderLineDoc[]; status: string }
+
+        // Greedy-fill: each received line's quantity applies to the first
+        // matching PO line with capacity left, spilling into the next if a
+        // PO has more than one line for the same item — a data-entry
+        // mistake M14's own create form doesn't currently prevent.
+        const lines = po.lines.map((l) => ({ ...l }))
+        for (const received of receivedItems) {
+          if (!received.itemId) continue
+          let remaining = received.qtyReceived
+          for (const line of lines) {
+            if (remaining <= 0) break
+            if (line.itemId !== received.itemId) continue
+            const capacity = line.qtyOrdered - line.qtyReceivedSoFar
+            if (capacity <= 0) continue
+            const applied = Math.min(capacity, remaining)
+            line.qtyReceivedSoFar += applied
+            remaining -= applied
+          }
+        }
+
+        const allComplete = lines.every((l) => l.qtyReceivedSoFar >= l.qtyOrdered)
+        const anyReceived = lines.some((l) => l.qtyReceivedSoFar > 0)
+        const status = allComplete ? 'received' : anyReceived ? 'partially_received' : po.status
+
+        tx.update(poRef, { lines, status })
+      })
+    } catch (err) {
+      logger.error(
+        `onReceivingRecordCreated: failed to close out PO ${purchaseOrderId} from receiving ${event.params.receivingId} — ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
   },
 )
