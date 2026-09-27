@@ -74,7 +74,7 @@ One canonical product list in `g7-ops`, built as a **one-way bridge** from `g7-p
 
 ## M16 · Procurement reports
 
-New tabs on the reporting pattern `g7-pos` already ships (docs cross-reference: `g7-pos/docs/11-C4-REPORTS.md`): open PO aging, spend by supplier/category/time, supplier on-time-delivery percentage, low-stock/reorder alerts from M11.
+**Spec written, 2026-09-27 — see `docs/21-M16-PROCUREMENT-REPORTS.md`.** New tabs on the reporting pattern `g7-pos` already ships (docs cross-reference: `g7-pos/docs/11-C4-REPORTS.md`): open PO aging, spend by supplier/category/time, supplier on-time-delivery percentage, low-stock/reorder alerts from M11.
 
 ## M17 · Purchase/demand forecast
 
