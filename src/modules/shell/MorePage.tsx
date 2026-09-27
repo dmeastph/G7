@@ -125,23 +125,8 @@ export function MorePage() {
       </section>
       {isManager && (
         <section className="card">
-          <h2>Manager</h2>
+          <h2>Procurement</h2>
           <ul>
-            <li>
-              <Link to="/checklists/templates">Checklist templates</Link>
-            </li>
-            <li>
-              <Link to="/roster">Roster</Link>
-            </li>
-            <li>
-              <Link to="/certifications">Certification register</Link>
-            </li>
-            <li>
-              <Link to="/time/export">Verified hours export</Link>
-            </li>
-            <li>
-              <Link to="/parameters">Parameters</Link>
-            </li>
             <li>
               <Link to="/catalogue">Catalogue</Link>
             </li>
@@ -159,6 +144,28 @@ export function MorePage() {
             </li>
             <li>
               <Link to="/purchasing/reports">Reports</Link>
+            </li>
+          </ul>
+        </section>
+      )}
+      {isManager && (
+        <section className="card">
+          <h2>Manager</h2>
+          <ul>
+            <li>
+              <Link to="/checklists/templates">Checklist templates</Link>
+            </li>
+            <li>
+              <Link to="/roster">Roster</Link>
+            </li>
+            <li>
+              <Link to="/certifications">Certification register</Link>
+            </li>
+            <li>
+              <Link to="/time/export">Verified hours export</Link>
+            </li>
+            <li>
+              <Link to="/parameters">Parameters</Link>
             </li>
             <li>
               <Link to="/documents-register">Acknowledgment register</Link>

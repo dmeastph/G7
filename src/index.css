@@ -391,6 +391,12 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem;
+  /* Wide content (a table with many columns) scrolls inside its own card
+     instead of breaking the whole page out sideways on a phone-width
+     viewport — confirmed live on Catalogue at 574px: body.scrollWidth
+     (630px) exceeded window.innerWidth before this fix. */
+  max-width: 100%;
+  overflow-x: auto;
 }
 .card h2 {
   margin-top: 0;
@@ -441,6 +447,18 @@ button:disabled {
   color: var(--warn-ink);
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
+}
+
+/* ---- inline status badge (M10 catalogue, M11 inventory) ---- */
+.catalogue-page__missing-badge {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* ---- dialog ---- */
@@ -563,6 +581,14 @@ button:disabled {
 .card ul {
   margin: 0.5rem 0 0;
   padding-left: 1.2rem;
+}
+
+/* ---- low-stock row (M11 inventory, M16 reports) ---- */
+.inventory-page__row--low td:first-child {
+  border-left: 3px solid var(--warn-ink);
+}
+.inventory-page__row--low {
+  background: var(--warn-bg);
 }
 
 /* ---- take readings ---- */

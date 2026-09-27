@@ -96,7 +96,12 @@ export function ProcurementReportsPage() {
         </section>
       )}
 
-      {dimension === 'spend' && (
+      {dimension === 'spend' && spend.bySupplier.length === 0 && (
+        <section className="card">
+          <p className="empty-state">No committed spend yet — an order counts once it's sent to a supplier.</p>
+        </section>
+      )}
+      {dimension === 'spend' && spend.bySupplier.length > 0 && (
         <>
           <section className="card">
             <h2>By supplier</h2>
