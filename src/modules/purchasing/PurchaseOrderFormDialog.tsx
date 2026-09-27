@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { onSnapshot, query, where } from 'firebase/firestore'
 import { itemsCol, purchaseRequestsCol, suppliersCol } from '@/lib/firebase'
+import { useActiveBranch } from '@/lib/branch'
 import { usePurchaseOrderActions, updateDraftPurchaseOrder } from '@/lib/purchaseOrders'
 import { formatCentavos } from '@/lib/format'
 import type { ItemDoc, PurchaseOrder, PurchaseOrderLine, PurchaseRequest, Supplier } from '@/lib/types'
@@ -21,6 +22,7 @@ type Props = {
 }
 
 export function PurchaseOrderFormDialog({ existing, onClose }: Props) {
+  const activeBranch = useActiveBranch()
   const { createPurchaseOrder } = usePurchaseOrderActions()
   const [suppliers, setSuppliers] = useState<(Supplier & { id: string })[]>([])
   const [items, setItems] = useState<(ItemDoc & { id: string })[]>([])
@@ -45,16 +47,18 @@ export function PurchaseOrderFormDialog({ existing, onClose }: Props) {
 
   // Only relevant when creating fresh — an existing draft was either
   // already linked to a request or started standalone; that choice doesn't
-  // change on edit.
+  // change on edit. purchaseRequests' own rule requires
+  // sameBranch(resource.data.branchId) — same fix as InventoryPage's
+  // movement query, for the same reason.
   useEffect(() => {
-    if (existing) return
-    const q = query(purchaseRequestsCol, where('status', '==', 'approved'))
+    if (existing || !activeBranch) return
+    const q = query(purchaseRequestsCol, where('branchId', '==', activeBranch.branchId), where('status', '==', 'approved'))
     return onSnapshot(q, (snap) =>
       setPendingRequests(
         snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => !r.linkedPurchaseOrderId),
       ),
     )
-  }, [existing])
+  }, [existing, activeBranch])
 
   const activeSuppliers = [...suppliers].filter((s) => s.active).sort((a, b) => a.name.localeCompare(b.name))
   const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name))

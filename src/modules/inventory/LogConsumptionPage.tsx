@@ -3,8 +3,9 @@
 // requires a real item, unlike wastage's optional link — there's no
 // legacy free-text behavior to preserve here.
 import { useEffect, useState } from 'react'
-import { onSnapshot, query, orderBy, limit as fsLimit } from 'firebase/firestore'
+import { onSnapshot, query, where, orderBy, limit as fsLimit } from 'firebase/firestore'
 import { itemsCol, consumptionEntriesCol } from '@/lib/firebase'
+import { useActiveBranch } from '@/lib/branch'
 import { useWriteOperational } from '@/lib/write'
 import { toMillisSafe } from '@/lib/format'
 import type { ItemDoc, ConsumptionEntry } from '@/lib/types'
@@ -13,6 +14,7 @@ type ItemRow = ItemDoc & { id: string }
 type Row = ConsumptionEntry & { id: string }
 
 export function LogConsumptionPage() {
+  const activeBranch = useActiveBranch()
   const { write } = useWriteOperational()
   const [items, setItems] = useState<ItemRow[]>([])
   const [rows, setRows] = useState<Row[]>([])
@@ -26,10 +28,13 @@ export function LogConsumptionPage() {
     return onSnapshot(itemsCol, (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
   }, [])
 
+  // consumptionEntries' own rule requires sameBranch(resource.data.branchId)
+  // — same fix as InventoryPage's movement query, for the same reason.
   useEffect(() => {
-    const q = query(consumptionEntriesCol, orderBy('createdAt', 'desc'), fsLimit(20))
+    if (!activeBranch) return
+    const q = query(consumptionEntriesCol, where('branchId', '==', activeBranch.branchId), orderBy('createdAt', 'desc'), fsLimit(20))
     return onSnapshot(q, (snap) => setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
-  }, [])
+  }, [activeBranch])
 
   const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name))
   const itemById = new Map(items.map((i) => [i.id, i]))

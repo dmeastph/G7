@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { onSnapshot, query, where, orderBy, limit as fsLimit } from 'firebase/firestore'
 import { itemsCol, inventoryMovementsCol } from '@/lib/firebase'
 import { useAuth } from '@/lib/auth'
+import { useActiveBranch } from '@/lib/branch'
 import { toMillisSafe } from '@/lib/format'
 import type { ItemDoc, InventoryMovement } from '@/lib/types'
 
@@ -17,6 +18,7 @@ function formatWhen(ms: number): string {
 
 export function InventoryPage() {
   const auth = useAuth()
+  const activeBranch = useActiveBranch()
   const isManager = auth.claims?.role === 'store_manager' || auth.claims?.role === 'owner' || auth.claims?.role === 'ops_head'
   const [items, setItems] = useState<ItemRow[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -26,14 +28,25 @@ export function InventoryPage() {
     return onSnapshot(itemsCol, (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
   }, [])
 
+  // inventoryMovements' own rule requires sameBranch(resource.data.branchId)
+  // — a list query that doesn't also filter on branchId gets rejected
+  // outright (Firestore can't prove the rule holds without it), not just
+  // silently filtered. Confirmed live: this was permission-denied on every
+  // single "View movements" click until this filter was added.
   useEffect(() => {
-    if (!selectedId) {
+    if (!selectedId || !activeBranch) {
       setMovements([])
       return
     }
-    const q = query(inventoryMovementsCol, where('itemId', '==', selectedId), orderBy('createdAt', 'desc'), fsLimit(20))
+    const q = query(
+      inventoryMovementsCol,
+      where('branchId', '==', activeBranch.branchId),
+      where('itemId', '==', selectedId),
+      orderBy('createdAt', 'desc'),
+      fsLimit(20),
+    )
     return onSnapshot(q, (snap) => setMovements(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
-  }, [selectedId])
+  }, [selectedId, activeBranch])
 
   if (!isManager) {
     return (
