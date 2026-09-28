@@ -28,14 +28,16 @@ let hasLoadedOnce = false
 const cacheListeners = new Set<() => void>()
 let unsubscribe: (() => void) | null = null
 let refCount = 0
+let retryCount = 0
+const MAX_RETRIES = 5
 
-function ensureListening() {
-  refCount++
+function subscribeIfNeeded() {
   if (unsubscribe) return
   const q = query(parametersCol, where('effectiveTo', '==', null))
   unsubscribe = onSnapshot(
     q,
     (snap) => {
+      retryCount = 0
       const next = new Map<string, CachedParam[]>()
       snap.forEach((d) => {
         const p: CachedParam = { ...d.data(), id: d.id }
@@ -49,10 +51,24 @@ function ensureListening() {
     },
     () => {
       // Same self-healing reasoning as branch.ts: a denied/dropped stream
-      // never retries itself, so let the next subscriber start a fresh one.
+      // never retries itself, and on a hard page load there may be no
+      // future subscriber to start a fresh one. Actively retry with a
+      // short linear backoff instead of just waiting — via subscribeIfNeeded,
+      // not ensureListening, so a retry never inflates refCount.
       unsubscribe = null
+      if (retryCount < MAX_RETRIES && refCount > 0) {
+        retryCount++
+        setTimeout(() => {
+          if (refCount > 0) subscribeIfNeeded()
+        }, 300 * retryCount)
+      }
     },
   )
+}
+
+function ensureListening() {
+  refCount++
+  subscribeIfNeeded()
 }
 
 function stopListening() {

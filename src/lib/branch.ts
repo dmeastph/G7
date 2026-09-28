@@ -10,6 +10,8 @@ export type ActiveBranch = { branchId: string; branch: Branch }
 let cached: ActiveBranch | null = null
 const listeners = new Set<(b: ActiveBranch | null) => void>()
 let unsubscribe: (() => void) | null = null
+let retryCount = 0
+const MAX_RETRIES = 5
 
 function ensureListening() {
   if (unsubscribe) return
@@ -17,16 +19,23 @@ function ensureListening() {
   unsubscribe = onSnapshot(
     q,
     (snap) => {
+      retryCount = 0
       const d = snap.docs[0]
       cached = d ? { branchId: d.id, branch: d.data() } : null
       listeners.forEach((l) => l(cached))
     },
     () => {
       // A permission-denied (e.g. this fired before sign-in resolved) kills
-      // the stream for good — Firestore won't retry it on its own. Clearing
-      // the guard lets the next mount start a fresh, hopefully-authenticated
-      // listener instead of leaving the app stuck on "resolving…" forever.
+      // the stream for good — Firestore won't retry it on its own, and on a
+      // hard page load there may be no future mount to restart it either.
+      // Actively retry with a short linear backoff instead of just waiting.
       unsubscribe = null
+      if (retryCount < MAX_RETRIES && listeners.size > 0) {
+        retryCount++
+        setTimeout(() => {
+          if (listeners.size > 0) ensureListening()
+        }, 300 * retryCount)
+      }
     },
   )
 }
