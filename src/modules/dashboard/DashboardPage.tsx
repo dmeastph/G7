@@ -1,14 +1,18 @@
 // docs/13-M8-DASHBOARD-DIGEST.md §1 — the live view, plus the manager-only
-// close action.
+// close action. This is also the app's landing route (`/`) — folded in what
+// used to be a separate, smaller HomePage (branch/shift header, 4 of the 8
+// tiles, a "Full dashboard" link-through) so there's one screen, not two
+// that drift out of sync. `/dashboard` stays a redirect for old links.
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { onSnapshot, query, where } from 'firebase/firestore'
 import { businessDaysCol } from '@/lib/firebase'
 import { useActiveBranch } from '@/lib/branch'
 import { useAuth } from '@/lib/auth'
-import { useCurrentBusinessDayId } from '@/lib/businessDay'
+import { useCurrentBusinessDayId, useCurrentShift, setShiftOverride } from '@/lib/businessDay'
 import { formatTimeManila, toDateSafe } from '@/lib/format'
 import { closeBusinessDay, useDashboardData } from './actions'
+import { ShiftOverridePicker } from '@/modules/shell/ShiftOverridePicker'
 import type { BusinessDay } from '@/lib/types'
 
 // Same icon language as SideRail's nav icons — a tile's chip says what kind
@@ -68,6 +72,7 @@ export function DashboardPage() {
   const activeBranch = useActiveBranch()
   const auth = useAuth()
   const businessDayId = useCurrentBusinessDayId()
+  const shift = useCurrentShift()
   const data = useDashboardData()
 
   const isManager = auth.claims?.role === 'store_manager' || auth.claims?.role === 'owner' || auth.claims?.role === 'ops_head'
@@ -111,6 +116,22 @@ export function DashboardPage() {
   return (
     <div className="dashboard-page">
       <h2>Dashboard</h2>
+
+      <section className="card">
+        <h2>Branch</h2>
+        <p>{activeBranch ? `${activeBranch.branch.name} (${activeBranch.branchId})` : 'Resolving…'}</p>
+        <p>Business day: {businessDayId ?? 'resolving…'}</p>
+        <p>
+          Current shift:{' '}
+          {shift ? `${shift.templateName} (${shift.status})` : 'no shift covers this moment'}
+        </p>
+        {isManager && <ShiftOverridePicker />}
+        {isManager && shift && (
+          <button type="button" onClick={() => setShiftOverride(null)}>
+            Clear override
+          </button>
+        )}
+      </section>
 
       <section className="card status-summary">
         <div className={`status-summary__tile ${data.openExceptionsBySeverity.critical + data.openExceptionsBySeverity.high > 0 ? 'status-summary__tile--bad' : 'status-summary__tile--ok'}`}>

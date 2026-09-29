@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth, type AuthState } from '@/lib/auth'
 import { useActiveBranch } from '@/lib/branch'
 import { useOnlineStatus } from '@/lib/offline'
@@ -10,13 +10,14 @@ import { OfflineBanner } from '@/components/OfflineBanner'
 import { ActorChip } from '@/components/ActorChip'
 import { BottomNav } from '@/components/BottomNav'
 import { SideRail } from '@/components/SideRail'
-// HomePage loads eagerly — it's the first thing rendered on every cold
-// start, so lazy-loading it would only add a flicker on the most common
-// path. Every other route is code-split: the tablet never needs the cash,
-// document-upload or roster-builder code just to show the home screen
-// (docs/01-ARCHITECTURE.md performance targets — see also the bundle-size
-// note this split was written to address).
-import { HomePage } from '@/modules/shell/HomePage'
+// DashboardPage loads eagerly — it's the app's landing route (`/`), the
+// first thing rendered on every cold start, so lazy-loading it would only
+// add a flicker on the most common path. Every other route is code-split:
+// the tablet never needs the cash, document-upload or roster-builder code
+// just to show the landing screen (docs/01-ARCHITECTURE.md performance
+// targets — see also the bundle-size note this split was written to
+// address).
+import { DashboardPage } from '@/modules/dashboard/DashboardPage'
 
 const MorePage = lazy(() => import('@/modules/shell/MorePage').then((m) => ({ default: m.MorePage })))
 const ParamsAdminPage = lazy(() => import('@/modules/params/ParamsAdminPage').then((m) => ({ default: m.ParamsAdminPage })))
@@ -49,7 +50,6 @@ const DocumentDetailPage = lazy(() => import('@/modules/documents/DocumentDetail
 const DocumentAcknowledgmentRegisterPage = lazy(() =>
   import('@/modules/documents/DocumentAcknowledgmentRegisterPage').then((m) => ({ default: m.DocumentAcknowledgmentRegisterPage })),
 )
-const DashboardPage = lazy(() => import('@/modules/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const DailyDigestsPage = lazy(() => import('@/modules/dashboard/DailyDigestsPage').then((m) => ({ default: m.DailyDigestsPage })))
 const MySelfServicePage = lazy(() => import('@/modules/selfservice/MySelfServicePage').then((m) => ({ default: m.MySelfServicePage })))
 const MyLeaveRequestsPage = lazy(() => import('@/modules/selfservice/MyLeaveRequestsPage').then((m) => ({ default: m.MyLeaveRequestsPage })))
@@ -124,7 +124,7 @@ function AuthedShell({ auth }: { auth: Extract<AuthState, { mode: 'managed' | 's
       <main className="app-shell__content">
         <Suspense fallback={<p className="route-loading">Loading…</p>}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<DashboardPage />} />
             <Route path="/more" element={<MorePage />} />
             <Route path="/parameters" element={<ParamsAdminPage />} />
             <Route path="/coldchain" element={<ColdChainStatusPage />} />
@@ -154,7 +154,7 @@ function AuthedShell({ auth }: { auth: Extract<AuthState, { mode: 'managed' | 's
             <Route path="/documents" element={<DocumentsListPage />} />
             <Route path="/documents/:id" element={<DocumentDetailPage />} />
             <Route path="/documents-register" element={<DocumentAcknowledgmentRegisterPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
             <Route path="/dashboard/digests" element={<DailyDigestsPage />} />
             <Route path="/self" element={<MySelfServicePage />} />
             <Route path="/self/leave" element={<MyLeaveRequestsPage />} />

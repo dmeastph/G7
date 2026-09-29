@@ -23,9 +23,6 @@ export function MorePage() {
         <h2>Dashboard</h2>
         <ul>
           <li>
-            <Link to="/dashboard">Dashboard</Link>
-          </li>
-          <li>
             <Link to="/dashboard/digests">Digest history</Link>
           </li>
         </ul>
