@@ -63,7 +63,9 @@ export function PurchaseOrdersListPage() {
               {sorted.map((po) => (
                 <tr key={po.id}>
                   <td>{po.supplierName}</td>
-                  <td>{po.status.replace('_', ' ')}</td>
+                  <td>
+                    <span className={`status-pill status-pill--${po.status}`}>{po.status.replace('_', ' ')}</span>
+                  </td>
                   <td>{po.lines.length}</td>
                   <td>{formatCentavos(po.totalCentavos)}</td>
                   <td>

@@ -93,7 +93,9 @@ export function ProcurementReportsPage() {
                 {aging.map((row) => (
                   <tr key={row.poId}>
                     <td>{row.supplierName}</td>
-                    <td>{row.status.replace('_', ' ')}</td>
+                    <td>
+                      <span className={`status-pill status-pill--${row.status}`}>{row.status.replace('_', ' ')}</span>
+                    </td>
                     <td>{row.daysOpen}</td>
                     <td>{row.bucket}</td>
                   </tr>

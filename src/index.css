@@ -813,6 +813,40 @@ button:disabled {
   color: var(--success);
 }
 
+/* ---- status pill (purchase order status and anywhere else a lifecycle
+   state needs to read at a glance) — same shape as severity-pill, own
+   semantic mapping since these aren't severities. ---- */
+.status-pill {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.status-pill--draft {
+  background: var(--surface-sunken);
+  color: var(--muted);
+}
+.status-pill--sent,
+.status-pill--partially_received {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+.status-pill--confirmed {
+  background: var(--info-bg);
+  color: var(--info);
+}
+.status-pill--received {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.status-pill--cancelled {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
 /* ---- roster coverage ---- */
 .coverage-tests {
   display: flex;

@@ -86,7 +86,8 @@ export function PurchaseOrderDetailPage() {
     <div className="purchase-order-detail-page">
       <h2>{po.supplierName}</h2>
       <p>
-        Status: {po.status.replace('_', ' ')} — Total: {formatCentavos(po.totalCentavos)}
+        Status: <span className={`status-pill status-pill--${po.status}`}>{po.status.replace('_', ' ')}</span> — Total:{' '}
+        {formatCentavos(po.totalCentavos)}
         {po.expectedDeliveryDate && ` — Expected ${po.expectedDeliveryDate}`}
       </p>
       {po.status === 'cancelled' && po.cancelledReason && <p className="dialog__error">Cancelled: {po.cancelledReason}</p>}
