@@ -789,6 +789,30 @@ button:disabled {
   font-weight: 700;
 }
 
+/* ---- severity pill (exceptions inbox and anywhere else a severity
+   needs to read at a glance, not just as row text) ---- */
+.severity-pill {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.severity-pill--critical,
+.severity-pill--high {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.severity-pill--medium {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+.severity-pill--low {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
 /* ---- roster coverage ---- */
 .coverage-tests {
   display: flex;

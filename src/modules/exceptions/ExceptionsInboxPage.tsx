@@ -68,8 +68,10 @@ export function ExceptionsInboxPage() {
           </thead>
           <tbody>
             {filtered.map((e) => (
-              <tr key={e.id} className={e.severity === 'critical' ? 'status-page__out-of-range' : ''}>
-                <td>{e.severity}</td>
+              <tr key={e.id}>
+                <td>
+                  <span className={`severity-pill severity-pill--${e.severity}`}>{e.severity}</span>
+                </td>
                 <td>{e.title}</td>
                 <td>{e.source}</td>
                 <td>{e.status}</td>
