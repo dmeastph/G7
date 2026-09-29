@@ -11,6 +11,59 @@ import { formatTimeManila, toDateSafe } from '@/lib/format'
 import { closeBusinessDay, useDashboardData } from './actions'
 import type { BusinessDay } from '@/lib/types'
 
+// Same icon language as SideRail's nav icons — a tile's chip says what kind
+// of number this is before you've read the label.
+function AlertIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.3 3.9L2.7 18a1.8 1.8 0 0 0 1.5 2.7h15.6a1.8 1.8 0 0 0 1.5-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z" />
+      <path d="M12 9v4M12 17h.01" />
+    </svg>
+  )
+}
+function ChecklistIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 9l2 2 4-4M8 16h6" />
+    </svg>
+  )
+}
+function ThermometerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13.5V4a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0Z" />
+    </svg>
+  )
+}
+function WalletIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="6" width="18" height="13" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M7 15h4" />
+    </svg>
+  )
+}
+function PeopleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+      <circle cx="17" cy="9" r="2.4" />
+      <path d="M15.2 12.2c2.2.3 3.8 2 3.8 4.3" />
+    </svg>
+  )
+}
+function BadgeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="9" r="5.5" />
+      <path d="M9 13.5L7.5 21 12 18.5 16.5 21 15 13.5" />
+    </svg>
+  )
+}
+
 export function DashboardPage() {
   const activeBranch = useActiveBranch()
   const auth = useAuth()
@@ -61,40 +114,48 @@ export function DashboardPage() {
 
       <section className="card status-summary">
         <div className={`status-summary__tile ${data.openExceptionsBySeverity.critical + data.openExceptionsBySeverity.high > 0 ? 'status-summary__tile--bad' : 'status-summary__tile--ok'}`}>
+          <span className="status-summary__icon-chip"><AlertIcon /></span>
           <span className="status-summary__count">
             {data.openExceptionsBySeverity.critical + data.openExceptionsBySeverity.high}
           </span>
-          <span>high/critical exceptions</span>
+          <span className="status-summary__label">high/critical exceptions</span>
         </div>
         <div className={`status-summary__tile ${data.openExceptionsBySeverity.low + data.openExceptionsBySeverity.medium > 0 ? 'status-summary__tile--warn' : 'status-summary__tile--ok'}`}>
+          <span className="status-summary__icon-chip"><AlertIcon /></span>
           <span className="status-summary__count">
             {data.openExceptionsBySeverity.low + data.openExceptionsBySeverity.medium}
           </span>
-          <span>low/medium exceptions</span>
+          <span className="status-summary__label">low/medium exceptions</span>
         </div>
         <div className={`status-summary__tile ${data.missedChecksToday > 0 ? 'status-summary__tile--warn' : 'status-summary__tile--ok'}`}>
+          <span className="status-summary__icon-chip"><ChecklistIcon /></span>
           <span className="status-summary__count">{data.missedChecksToday}</span>
-          <span>checklists missed today</span>
+          <span className="status-summary__label">checklists missed today</span>
         </div>
         <div className={`status-summary__tile ${data.excursionsOpen.length > 0 ? 'status-summary__tile--bad' : 'status-summary__tile--ok'}`}>
+          <span className="status-summary__icon-chip"><ThermometerIcon /></span>
           <span className="status-summary__count">{data.excursionsOpen.length}</span>
-          <span>units out of range</span>
+          <span className="status-summary__label">units out of range</span>
         </div>
         <div className="status-summary__tile">
+          <span className="status-summary__icon-chip"><WalletIcon /></span>
           <span className="status-summary__count">{data.cashSessionsOpen}</span>
-          <span>cash sessions open</span>
+          <span className="status-summary__label">cash sessions open</span>
         </div>
         <div className={`status-summary__tile ${data.cashPendingAttention > 0 ? 'status-summary__tile--warn' : 'status-summary__tile--ok'}`}>
+          <span className="status-summary__icon-chip"><WalletIcon /></span>
           <span className="status-summary__count">{data.cashPendingAttention}</span>
-          <span>cash counts need attention</span>
+          <span className="status-summary__label">cash counts need attention</span>
         </div>
         <div className={`status-summary__tile ${data.shiftsShort > 0 ? 'status-summary__tile--bad' : 'status-summary__tile--ok'}`}>
+          <span className="status-summary__icon-chip"><PeopleIcon /></span>
           <span className="status-summary__count">{data.shiftsShort}</span>
-          <span>of {data.shiftsPlanned} shifts short-staffed</span>
+          <span className="status-summary__label">of {data.shiftsPlanned} shifts short-staffed</span>
         </div>
         <div className={`status-summary__tile ${data.certExpiryWindowSet && data.certificationsExpiring > 0 ? 'status-summary__tile--warn' : ''}`}>
+          <span className="status-summary__icon-chip"><BadgeIcon /></span>
           <span className="status-summary__count">{data.certExpiryWindowSet ? data.certificationsExpiring : 'not set'}</span>
-          <span>certifications expiring</span>
+          <span className="status-summary__label">certifications expiring</span>
         </div>
       </section>
 

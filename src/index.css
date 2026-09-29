@@ -1,24 +1,28 @@
 :root {
   color-scheme: light;
-  --bg: #f5f7f4;
+  --bg: #f6f5fb;
   --surface: #ffffff;
-  --surface-sunken: #eef1ec;
-  --ink: #13201c;
-  --muted: #5c6b64;
-  --faint: #8a968f;
-  --border: #dee4de;
-  --border-strong: #c7d0c8;
-  --accent: #0f766e;
-  --accent-hover: #0b5b53;
-  --accent-tint: #e1f0eb;
-  --danger: #b23b2e;
-  --danger-bg: #fbe7e4;
-  --warn-bg: #fbf0dc;
-  --warn-ink: #9a6b15;
-  --success: #2f7d46;
-  --success-bg: #e7f5ea;
+  --surface-sunken: #eeecf7;
+  --ink: #211e2e;
+  --muted: #6f6b85;
+  --faint: #9994ae;
+  --border: #e8e5f3;
+  --border-strong: #d3cee7;
+  --accent: #6d5dd3;
+  --accent-hover: #5c4dc0;
+  --accent-tint: #eeeafc;
+  --danger: #d1436b;
+  --danger-bg: #fce8ed;
+  --warn-bg: #fdf3d9;
+  --warn-ink: #b9791e;
+  --success: #2f9e58;
+  --success-bg: #e4f7ea;
+  --info: #6d5dd3;
+  --info-bg: #efebfc;
   --radius-ctrl: 10px;
-  font-family: 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --radius-card: 18px;
+  font-family: 'Work Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Manrope', 'Work Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 }
 
@@ -28,23 +32,25 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #101613;
-    --surface: #1a2420;
-    --surface-sunken: #151e1a;
-    --ink: #e9f1ec;
-    --muted: #93a29a;
-    --faint: #647169;
-    --border: #293530;
-    --border-strong: #3a4a43;
-    --accent: #3ed6a3;
-    --accent-hover: #5ee0b4;
-    --accent-tint: #1b3a30;
-    --danger: #f0806f;
-    --danger-bg: #3d1f1b;
-    --warn-bg: #3a2e14;
-    --warn-ink: #e4b75b;
-    --success: #5cc57e;
-    --success-bg: #1b3324;
+    --bg: #15131f;
+    --surface: #1f1d2c;
+    --surface-sunken: #191725;
+    --ink: #f1eff7;
+    --muted: #9994ae;
+    --faint: #6d6884;
+    --border: #2e2b3f;
+    --border-strong: #423d59;
+    --accent: #b0a3f0;
+    --accent-hover: #c4b9f5;
+    --accent-tint: #2a2440;
+    --danger: #f093b0;
+    --danger-bg: #331e28;
+    --warn-bg: #332a18;
+    --warn-ink: #efc067;
+    --success: #7fd08b;
+    --success-bg: #1b2e24;
+    --info: #b0a3f0;
+    --info-bg: #241f3a;
   }
 }
 
@@ -389,7 +395,7 @@ button:disabled {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   padding: 1rem;
   /* Wide content (a table with many columns) scrolls inside its own card
      instead of breaking the whole page out sideways on a phone-width
@@ -401,6 +407,8 @@ button:disabled {
 .card h2 {
   margin-top: 0;
   font-size: 1rem;
+  font-family: var(--font-display);
+  font-weight: 700;
   color: var(--muted);
 }
 .card dl {
@@ -672,42 +680,54 @@ button:disabled {
   gap: 0.75rem;
 }
 .status-summary__tile {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem;
+  background: var(--info-bg);
+  color: var(--info);
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  padding: 0.9rem 1rem 1rem;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  text-align: left;
+}
+.status-summary__icon-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--surface);
+  display: flex;
   align-items: center;
-  gap: 0.25rem;
-  text-align: center;
+  justify-content: center;
+  color: inherit;
+  flex-shrink: 0;
 }
 .status-summary__tile--ok {
   background: var(--success-bg);
-  border-color: transparent;
-}
-.status-summary__tile--ok .status-summary__count {
   color: var(--success);
 }
 .status-summary__tile--warn {
   background: var(--warn-bg);
-  border-color: transparent;
-}
-.status-summary__tile--warn .status-summary__count {
   color: var(--warn-ink);
 }
 .status-summary__tile--bad {
   background: var(--danger-bg);
-  border-color: transparent;
-}
-.status-summary__tile--bad .status-summary__count {
   color: var(--danger);
 }
 .status-summary__count {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
-  font-size: 1.75rem;
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+  color: inherit;
+}
+.status-summary__label {
+  font-size: 0.76rem;
   font-weight: 600;
+  color: inherit;
+  opacity: 0.85;
+  line-height: 1.25;
 }
 .status-page__out-of-range {
   color: var(--danger);
