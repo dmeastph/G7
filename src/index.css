@@ -8,17 +8,30 @@
   --faint: #9994ae;
   --border: #e8e5f3;
   --border-strong: #d3cee7;
-  --accent: #6d5dd3;
-  --accent-hover: #5c4dc0;
-  --accent-tint: #eeeafc;
+  /* Brand accent (docs: G7 Korean Mart logo) — vivid pink for fills, icons,
+     large text and anything with a background behind it. --accent-text is a
+     darkened variant for small plain text/outlines directly on a light
+     surface, where the vivid tone alone falls just short of AA contrast. */
+  --accent: #ed1a78;
+  --accent-hover: #c4106a;
+  --accent-text: #c4106a;
+  --accent-tint: #fce7f1;
   --danger: #d1436b;
   --danger-bg: #fce8ed;
   --warn-bg: #fdf3d9;
   --warn-ink: #b9791e;
   --success: #2f9e58;
   --success-bg: #e4f7ea;
-  --info: #6d5dd3;
-  --info-bg: #efebfc;
+  --info: #ed1a78;
+  --info-bg: #fce7f1;
+  /* Brand panel — the logo's own deep purple, fixed across light/dark mode
+     (a brand surface, not a themed one) for the sidebar/rail. */
+  --brand-panel-bg: #2a0a5e;
+  --brand-panel-fg: #ffffff;
+  --brand-panel-fg-muted: rgba(255, 255, 255, 0.68);
+  --brand-panel-active-bg: #ed1a78;
+  --brand-panel-active-fg: #ffffff;
+  --brand-panel-card-bg: rgba(255, 255, 255, 0.08);
   --radius-ctrl: 10px;
   --radius-card: 18px;
   font-family: 'Work Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -40,17 +53,18 @@
     --faint: #6d6884;
     --border: #2e2b3f;
     --border-strong: #423d59;
-    --accent: #b0a3f0;
-    --accent-hover: #c4b9f5;
-    --accent-tint: #2a2440;
+    --accent: #ff6fae;
+    --accent-hover: #ff8cc0;
+    --accent-text: #ff6fae;
+    --accent-tint: #3a1030;
     --danger: #f093b0;
     --danger-bg: #331e28;
     --warn-bg: #332a18;
     --warn-ink: #efc067;
     --success: #7fd08b;
     --success-bg: #1b2e24;
-    --info: #b0a3f0;
-    --info-bg: #241f3a;
+    --info: #ff6fae;
+    --info-bg: #3a1030;
   }
 }
 
@@ -352,8 +366,7 @@ button:disabled {
   left: 0;
   width: 236px;
   padding: 1.1rem 0.9rem;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: var(--brand-panel-bg);
   z-index: 15;
   overflow-y: auto;
 }
@@ -367,8 +380,8 @@ button:disabled {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--brand-panel-active-bg);
+  color: var(--brand-panel-active-fg);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -382,6 +395,7 @@ button:disabled {
   font-weight: 800;
   font-size: 0.95rem;
   letter-spacing: -0.01em;
+  color: var(--brand-panel-fg);
 }
 .side-rail__item {
   display: flex;
@@ -391,7 +405,7 @@ button:disabled {
   padding: 0 0.6rem;
   border-radius: 10px;
   text-decoration: none;
-  color: var(--muted);
+  color: var(--brand-panel-fg-muted);
   font-size: 0.84rem;
   font-weight: 600;
 }
@@ -401,12 +415,12 @@ button:disabled {
   flex-shrink: 0;
 }
 .side-rail__item--active {
-  background: var(--accent-tint);
-  color: var(--accent);
+  background: var(--brand-panel-active-bg);
+  color: var(--brand-panel-active-fg);
 }
 .side-rail__status-card {
   margin-top: auto;
-  background: var(--info-bg, var(--accent-tint));
+  background: var(--brand-panel-card-bg);
   border-radius: 16px;
   padding: 0.85rem 0.9rem;
   display: flex;
@@ -416,7 +430,7 @@ button:disabled {
 .side-rail__status-label {
   font-size: 0.62rem;
   font-weight: 700;
-  color: var(--accent);
+  color: #ff8cc0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -424,10 +438,11 @@ button:disabled {
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 0.85rem;
+  color: var(--brand-panel-fg);
 }
 .side-rail__status-sub {
   font-size: 0.72rem;
-  color: var(--muted);
+  color: var(--brand-panel-fg-muted);
   margin-top: 0.1rem;
 }
 
