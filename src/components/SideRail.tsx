@@ -4,7 +4,12 @@
 // in index.css). Same destinations as BottomNav, same "everything else
 // lives under More" rule (docs/07-M2-CHECKLISTS.md) — this is a second
 // presentation of one nav model, not a second information architecture.
+// Widened to a labeled sidebar (icon + text, a wordmark, a live business-day
+// card) for the Taskly-inspired design refresh — content unchanged, layout
+// isn't.
 import { NavLink } from 'react-router-dom'
+import { useActiveBranch } from '@/lib/branch'
+import { useCurrentBusinessDayId, useCurrentShift } from '@/lib/businessDay'
 
 const linkClass = ({ isActive }: { isActive: boolean }) => `side-rail__item ${isActive ? 'side-rail__item--active' : ''}`
 
@@ -66,9 +71,17 @@ function MoreIcon() {
 }
 
 export function SideRail() {
+  const activeBranch = useActiveBranch()
+  const businessDayId = useCurrentBusinessDayId()
+  const currentShift = useCurrentShift()
+
   return (
     <nav className="side-rail" aria-label="Main">
-      <div className="side-rail__mark" aria-hidden="true" />
+      <div className="side-rail__wordmark">
+        <span className="side-rail__mark" aria-hidden="true">G7</span>
+        <span className="side-rail__wordmark-text">G7 Ops</span>
+      </div>
+
       <NavLink to="/" end className={linkClass}>
         <HomeIcon />
         Home
@@ -97,6 +110,15 @@ export function SideRail() {
         <MoreIcon />
         More
       </NavLink>
+
+      <div className="side-rail__status-card">
+        <div className="side-rail__status-label">Business day</div>
+        <div className="side-rail__status-value">{businessDayId ?? 'resolving…'}</div>
+        <div className="side-rail__status-sub">
+          {activeBranch ? `${activeBranch.branch.name} · ` : ''}
+          {currentShift ? `${currentShift.templateName} · ${currentShift.status}` : 'no current shift'}
+        </div>
+      </div>
     </nav>
   )
 }
